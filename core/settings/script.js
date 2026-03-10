@@ -91,6 +91,7 @@
     }
 
     applyMeta();
+    dom.modalUrlInput.placeholder = state.widgetUrl + "?...";
     renderSections();
     renderActions();
     renderFooter();
