@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Widget Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="settings-container">
+    <div class="settings-panel">
+      <div class="settings-header">
+        <img id="widgetLogo" src="../../assets/images/rexbordz-blue-and-white-gradient-logo.png" alt="Widget Logo" class="widget-logo">
+        <h1 id="widgetTitle" class="widget-title">Widget Settings</h1>
+      </div>
+
+      <div class="settings-body">
+        <div id="settingsForm"></div>
+        <div id="actionArea"></div>
+
+        <button id="applySettings" type="button">Copy Link URL</button>
+
+        <div class="utility-button-row">
+          <button id="loadDefaultsButton" type="button" class="utility-button">Load Default</button>
+          <button id="openLoadSettingsModalButton" type="button" class="utility-button utility-button-gray">Load Settings</button>
+        </div>
+
+        <div id="settingsFooter" class="settings-footer"></div>
+      </div>
+    </div>
+
+    <div class="preview-panel">
+      <iframe id="previewFrame" frameborder="0"></iframe>
+    </div>
+  </div>
+
+  <div id="loadSettingsModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+    <div
+      class="modal-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="loadSettingsModalTitle"
+    >
+      <h2 id="loadSettingsModalTitle" class="modal-title">Load Settings</h2>
+      <p class="modal-note">Paste your widget URL with parameters to populate the form fields.</p>
+
+      <textarea
+        id="loadSettingsUrlInput"
+        class="modal-url-input"
+        placeholder="Paste widget URL here"
+        spellcheck="false"
+      ></textarea>
+
+      <p id="loadSettingsError" class="modal-error hidden">Please enter a valid widget URL.</p>
+
+      <div class="modal-button-row">
+        <button id="confirmLoadSettingsButton" type="button">Load Settings</button>
+        <button id="cancelLoadSettingsButton" type="button" class="utility-button-gray">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+  <script src="./script.js"></script>
+</body>
+</html>
