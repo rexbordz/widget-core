@@ -369,10 +369,50 @@
     localStorage.setItem(storageKey, JSON.stringify(values));
   }
 
+  function buildWidgetParams(values) {
+    const params = new URLSearchParams();
+
+    getAllFields().forEach((field) => {
+      const element = state.elements[field.id];
+      if (!element) return;
+
+      // allow fields to opt out from widget URL
+      if (field.includeInWidgetParams === false) return;
+
+      // optional custom param name, otherwise use the field id
+      const paramName = field.param || field.id;
+      const value = values[field.id];
+
+      if (field.type === 'checkbox') {
+        // omit true by default, only include false
+        if (value === false) {
+          params.set(paramName, 'false');
+        }
+        return;
+      }
+
+      if (value === '' || value === null || value === undefined) return;
+
+      params.set(paramName, String(value).trim ? String(value).trim() : String(value));
+    });
+
+    if (typeof state.hooks?.transformWidgetParams === 'function') {
+      return state.hooks.transformWidgetParams(params, values, state.config);
+    }
+
+    return params;
+  }
+
+  function buildWidgetUrl(values) {
+    const params = buildWidgetParams(values);
+    const qs = params.toString();
+    return qs ? `${state.widgetUrl}?${qs}` : state.widgetUrl;
+  }
+
   function updatePreview() {
     const values = collectValues();
     persistValues(values);
-    dom.previewFrame.src = state.hooks.buildPreviewUrl(state.widgetUrl, values);
+    dom.previewFrame.src = buildWidgetUrl(values);
   }
 
   function sendTestAlert(testValue) {
@@ -384,7 +424,7 @@
   async function copyWidgetUrl() {
     const values = collectValues();
     persistValues(values);
-    const targetUrl = state.hooks.buildShareUrl(state.widgetUrl, values);
+    const targetUrl = buildWidgetUrl(values);
 
     try {
       await navigator.clipboard.writeText(targetUrl);
@@ -467,12 +507,13 @@
     let appliedCount = 0;
 
     getAllFields().forEach((field) => {
-      if (!params.has(field.id)) return;
+      const paramName = field.param || field.id;
+      if (!params.has(paramName)) return;
 
       const element = state.elements[field.id];
       if (!element) return;
 
-      const rawValue = params.get(field.id);
+      const rawValue = params.get(paramName);
 
       if (field.type === 'checkbox') {
         element.checked = rawValue === 'true' || rawValue === '1';
