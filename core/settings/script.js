@@ -84,11 +84,7 @@
     ]);
 
     state.config = config;
-    state.hooks = window.WidgetSettingsHooks;
-
-    if (!state.hooks) {
-      throw new Error('WidgetSettingsHooks was not found after loading widget hooks script.');
-    }
+    state.hooks = window.WidgetSettingsHooks || {};
 
     applyMeta();
     dom.modalUrlInput.placeholder = state.widgetUrl + "?...";
@@ -233,7 +229,11 @@
   function renderActions() {
     dom.actions.innerHTML = '';
 
-    if (Array.isArray(state.page.testButtons) && state.page.testButtons.length) {
+    if (
+        typeof state.hooks?.createTestAlert === 'function' &&
+        Array.isArray(state.page.testButtons) &&
+        state.page.testButtons.length
+      ) {
       const row = document.createElement('div');
       row.className = 'button-row';
 
