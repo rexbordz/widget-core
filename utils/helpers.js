@@ -14,7 +14,8 @@ async function getKickAvatar(username) {
   try {
     const response = await fetch(`https://kick.com/api/v2/channels/${username}`);
     const data = await response.json();
-    let profilePicUrl = data.user?.profile_pic || null;
+	const genericAvatar = "https://files.kick.com/images/user/4545493/profile_image/conversion/default1-medium.webp";
+    let profilePicUrl = data.user?.profile_pic || genericAvatar;
 
     if (profilePicUrl) {
       // Replace 'fullsize' with 'medium'
@@ -24,7 +25,7 @@ async function getKickAvatar(username) {
 
   } catch (err) {
     console.error("Error fetching Kick profile picture:", err);
-    return null;
+    return genericAvatar;
   }
 }
 
