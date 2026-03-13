@@ -65,3 +65,63 @@ function FindFirstImageUrl(jsonObject) {
 
 	return iterate(jsonObject);
 }
+
+function renderTwitchEmotes(message, data) {
+  if (!message || !Array.isArray(data?.emotes) || !data.emotes.length) {
+    return message;
+  }
+
+  let renderedMessage = message;
+
+  for (const emote of data.emotes) {
+    if (!emote?.name || !emote?.imageUrl) continue;
+
+    const emoteElement = `<img src="${emote.imageUrl}" class="emote"/>`;
+
+    // Escape regex characters directly here
+    const escapedName = emote.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    let regexPattern = escapedName;
+
+    if (/^\w+$/.test(emote.name)) {
+      regexPattern = `\\b${escapedName}\\b`;
+    } else {
+      regexPattern = `(?<=^|[^\\w])${escapedName}(?=$|[^\\w])`;
+    }
+
+    const regex = new RegExp(regexPattern, "g");
+    renderedMessage = renderedMessage.replace(regex, emoteElement);
+  }
+
+  return renderedMessage;
+}
+
+function renderCheermotes(message, data) {
+  if (!message || !Array.isArray(data?.cheerEmotes) || !data.cheerEmotes.length) {
+    return message;
+  }
+
+  let renderedMessage = message;
+
+  for (const cheerEmote of data.cheerEmotes) {
+    if (!cheerEmote?.name || !cheerEmote?.bits || !cheerEmote?.imageUrl) continue;
+
+    const bits = cheerEmote.bits;
+    const imageUrl = cheerEmote.imageUrl;
+
+    // Escape regex characters directly here
+    const escapedName = cheerEmote.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const cheerEmoteElement = `<img src="${imageUrl}" class="emote"/>`;
+    const bitsElement = `<span class="bits">${bits}</span>`;
+
+    const regex = new RegExp(`\\b${escapedName}${bits}\\b`, "gi");
+
+    renderedMessage = renderedMessage.replace(
+      regex,
+      `${cheerEmoteElement}${bitsElement}`
+    );
+  }
+
+  return renderedMessage;
+}
