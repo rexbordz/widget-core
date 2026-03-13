@@ -435,27 +435,29 @@
     }
   }
 
-  function loadDefaults() {
-    getAllFields().forEach((field) => {
-      const element = state.elements[field.id];
-      if (!element) return;
+  function loadDefaults({ silent = false } = {}) {
+  getAllFields().forEach((field) => {
+    const element = state.elements[field.id];
+    if (!element) return;
 
-      if (field.type === 'checkbox') {
-        element.checked = Boolean(field.defaultValue);
-        return;
-      }
+    if (field.type === 'checkbox') {
+      element.checked = Boolean(field.defaultValue);
+      return;
+    }
 
-      if (field.type === 'select') {
-        element.value = field.defaultValue ?? '';
-        return;
-      }
-
+    if (field.type === 'select') {
       element.value = field.defaultValue ?? '';
-    });
+      return;
+    }
 
+    element.value = field.defaultValue ?? '';
+  });
+
+  if (!silent) {
     updatePreview();
     flashButton(dom.loadDefaultsButton, 'Defaults loaded', '#4CAF50', 2500);
   }
+}
 
   function openLoadSettingsModal() {
     dom.modalUrlInput.value = '';
@@ -486,16 +488,16 @@
 
     try {
       const parsedUrl = new URL(rawUrl);
-      const appliedCount = applyValuesFromUrl(parsedUrl);
 
-      if (appliedCount === 0) {
-        showModalError('No matching settings were found in that URL.');
-        return;
-      }
+      // Reset to defaults first
+      loadDefaults({ silent: true });
+
+      const appliedCount = applyValuesFromUrl(parsedUrl);
 
       closeLoadSettingsModal();
       updatePreview();
       flashButton(dom.openLoadSettingsModalButton, 'Settings loaded', '#4CAF50', 2500);
+
     } catch (error) {
       console.error(error);
       showModalError('Please enter a valid widget URL.');
