@@ -84,7 +84,12 @@
     ]);
 
     state.config = config;
-    state.hooks = window.WidgetSettingsHooks || {};
+    state.hooks = {
+      buildPreviewUrl: (url, values) => url,
+      buildShareUrl: (url, values) => url,
+      createTestAlert: () => null,
+      ...(window.WidgetSettingsHooks || {})
+    };
 
     applyMeta();
     dom.modalUrlInput.placeholder = state.widgetUrl + "?...";
@@ -230,18 +235,22 @@
     dom.actions.innerHTML = '';
 
     if (
-        typeof state.hooks?.createTestAlert === 'function' &&
-        Array.isArray(state.page.testButtons) &&
-        state.page.testButtons.length
-      ) {
+      typeof state.hooks?.createTestAlert === 'function' &&
+      Array.isArray(state.page.testButtons) &&
+      state.page.testButtons.length
+    ) {
       const row = document.createElement('div');
-      row.className = 'button-row';
+      row.className = 'test-button-row';
+
+      const count = state.page.testButtons.length;
+      const columns = count === 4 ? 2 : Math.min(3, count);
+      row.style.setProperty('--test-button-columns', columns);
 
       state.page.testButtons.forEach((buttonConfig) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = buttonConfig.label;
-        button.addEventListener('click', () => sendTestAlert(buttonConfig.value));
+        button.addEventListener('click', () => sendTestAlert(buttonConfig));
         row.appendChild(button);
       });
 
@@ -415,10 +424,16 @@
     dom.previewFrame.src = buildWidgetUrl(values);
   }
 
-  function sendTestAlert(testValue) {
+  function sendTestAlert(buttonConfig) {
     const values = collectValues();
-    const payload = state.hooks.createTestAlert(testValue, values);
-    dom.previewFrame.contentWindow?.postMessage({ type: 'testAlert', data: payload }, '*');
+    const payload = state.hooks.createTestAlert(buttonConfig, values);
+
+    if (!payload) return;
+
+    dom.previewFrame.contentWindow?.postMessage(
+      { type: 'testAlert', data: payload },
+      '*'
+    );
   }
 
   async function copyWidgetUrl() {

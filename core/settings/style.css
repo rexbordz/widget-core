@@ -212,14 +212,15 @@ button:active {
   transform: scale(0.96);
 }
 
-.button-row {
-  display: flex;
-  justify-content: space-between;
+.test-button-row {
+  display: grid;
   gap: 10px;
   margin-bottom: 15px;
+  grid-template-columns: repeat(var(--test-button-columns, 1), minmax(0, 1fr));
 }
 
-.button-row button {
+.test-button-row button {
+  margin-top: 0;
   background-color: #59606b;
 }
 
