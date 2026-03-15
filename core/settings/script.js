@@ -145,7 +145,7 @@
       if (section.note) {
         const note = document.createElement('p');
         note.className = 'section-note';
-        note.textContent = section.note;
+        note.innerHTML = section.note;
         wrapper.appendChild(note);
       }
 
@@ -174,7 +174,7 @@
     if (field.note) {
       const note = document.createElement('div');
       note.className = 'field-note';
-      note.textContent = field.note;
+      note.innerHTML = field.note;
       labelWrap.appendChild(note);
     }
 
