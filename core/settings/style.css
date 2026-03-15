@@ -126,6 +126,11 @@ html, body {
   color: #9fbdf2; /* light grey-blue */
 }
 
+.field-note a:hover,
+.section-note a:hover {
+  text-decoration: underline;
+}
+
 .form-row input[type="text"],
 .form-row input[type="number"],
 .form-row input[type="color"],
