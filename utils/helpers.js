@@ -1,4 +1,4 @@
-async function getTwitchAvatar(username) {
+async function GetTwitchAvatar(username) {
   const url = `https://decapi.me/twitch/avatar/${encodeURIComponent(username)}`;
 
   try {
@@ -10,7 +10,7 @@ async function getTwitchAvatar(username) {
   }
 }
 
-async function getKickAvatar(username) {
+async function GetKickAvatar(username) {
   try {
     const response = await fetch(`https://kick.com/api/v2/channels/${username}`);
     const data = await response.json();
@@ -66,7 +66,7 @@ function FindFirstImageUrl(jsonObject) {
 	return iterate(jsonObject);
 }
 
-function renderTwitchEmotes(message, data) {
+function RenderTwitchEmotes(message, data) {
   if (!message || !Array.isArray(data?.emotes) || !data.emotes.length) {
     return message;
   }
@@ -96,7 +96,7 @@ function renderTwitchEmotes(message, data) {
   return renderedMessage;
 }
 
-function renderCheermotes(message, data) {
+function RenderCheermotes(message, data) {
   if (!message || !Array.isArray(data?.cheerEmotes) || !data.cheerEmotes.length) {
     return message;
   }
@@ -124,4 +124,55 @@ function renderCheermotes(message, data) {
   }
 
   return renderedMessage;
+}
+
+async function GetKickIds(username) {
+    // First attempt with the original username
+    let url = `https://kick.com/api/v2/channels/${username}`;
+
+    try {
+        let response = await fetch(url);
+        if (!response.ok) {
+            // Retry with underscores replaced by dashes
+            const altUsername = username.replace(/_/g, "-");
+            url = `https://kick.com/api/v2/channels/${altUsername}`;
+            response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+        }
+
+        const data = await response.json();
+        if (data.chatroom && data.chatroom.id) {
+            return { chatroomId: data.chatroom.id, channelId: data.chatroom.channel_id };
+        } else {
+            throw new Error("Chatroom ID not found in response.");
+        }
+    } catch (error) {
+        console.error("Failed to fetch chatroom ID:", error.message);
+        return null;
+    }
+}
+
+async function GetKickSubBadges(username) {
+    let url = `https://kick.com/api/v2/channels/${username}`;
+
+    try {
+        let response = await fetch(url);
+        if (!response.ok) {
+            // Retry with underscores replaced by dashes
+            const altUsername = username.replace(/_/g, "-");
+            url = `https://kick.com/api/v2/channels/${altUsername}`;
+            response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+        }
+
+        const data = await response.json();
+        return data.subscriber_badges || [];
+    } catch (error) {
+        console.error("Failed to fetch subscriber badges:", error.message);
+        return [];
+    }
 }
