@@ -121,6 +121,11 @@ html, body {
   color: #bbb;
 }
 
+.field-note a,
+.section-note a {
+  color: #9fbdf2; /* light grey-blue */
+}
+
 .form-row input[type="text"],
 .form-row input[type="number"],
 .form-row input[type="color"],
@@ -421,3 +426,4 @@ body.modal-open .settings-container {
 a {
   text-decoration: none; /*Remove the annoying blue underline under hyperlinks*/
 }
+
