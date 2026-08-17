@@ -1,13 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="wa-dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Widget Settings</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Required: default theme + autoloader -->
+  <link rel="stylesheet" href="https://ka-f.webawesome.com/webawesome@3.11.0/styles/themes/default.css">
+  <script type="module" src="https://ka-f.webawesome.com/webawesome@3.11.0/webawesome.loader.js"></script>
+
+  <!-- Recommended: utility classes ("CSS Utilities") -->
+  <link rel="stylesheet" href="https://ka-f.webawesome.com/webawesome@3.11.0/styles/utilities.css">
+
+  <!-- Optional: CSS reset ("Native Styles") -->
+  <link rel="stylesheet" href="https://ka-f.webawesome.com/webawesome@3.11.0/styles/native.css">
+
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -22,7 +34,7 @@
         <div id="settingsForm"></div>
         <div id="actionArea"></div>
 
-        <button id="applySettings" type="button">Copy Link URL</button>
+        <button id="applySettings" type="button" class="primary-button">Copy Link URL</button>
 
         <div class="utility-button-row">
           <button id="loadDefaultsButton" type="button" class="utility-button">Load Default</button>
@@ -38,31 +50,22 @@
     </div>
   </div>
 
-  <div id="loadSettingsModalOverlay" class="modal-overlay hidden" aria-hidden="true">
-    <div
-      class="modal-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="loadSettingsModalTitle"
-    >
-      <h2 id="loadSettingsModalTitle" class="modal-title">Load Settings</h2>
-      <p class="modal-note">Paste your widget URL with parameters to populate the form fields.</p>
+  <wa-dialog id="loadSettingsModal" label="Load Settings" light-dismiss>
+    <p class="modal-note">Paste your widget URL with parameters to populate the form fields.</p>
 
-      <textarea
-        id="loadSettingsUrlInput"
-        class="modal-url-input"
-        placeholder="Paste widget URL here"
-        spellcheck="false"
-      ></textarea>
+    <wa-textarea
+      id="loadSettingsUrlInput"
+      class="modal-url-input"
+      placeholder="Paste widget URL here"
+      rows="4"
+      resize="vertical"
+      spellcheck="false"
+    ></wa-textarea>
 
-      <p id="loadSettingsError" class="modal-error hidden">Please enter a valid widget URL.</p>
+    <p id="loadSettingsError" class="modal-error hidden">Please enter a valid widget URL.</p>
 
-      <div class="modal-button-row">
-        <button id="confirmLoadSettingsButton" type="button">Load Settings</button>
-        <button id="cancelLoadSettingsButton" type="button" class="utility-button-gray">Cancel</button>
-      </div>
-    </div>
-  </div>
+    <button id="confirmLoadSettingsButton" slot="footer" type="button" class="primary-button">Load</button>
+  </wa-dialog>
 
   <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
   <script src="./script.js"></script>

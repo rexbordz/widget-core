@@ -12,6 +12,14 @@ html, body {
   box-sizing: border-box;
 }
 
+/* WebAwesome's native.css reset overrides text color on specific elements
+   (headings, labels, buttons, etc.) with its own theme variables, which reads
+   as dark text on our dark background. Re-assert white at equal/higher
+   specificity, loaded after WA's stylesheets, so it wins the cascade. */
+html, body, * {
+  color: #fff;
+}
+
 .settings-container {
   display: flex;
   height: 100vh;
@@ -74,14 +82,17 @@ html, body {
 .form-section {
   margin-bottom: 22px;
   padding: 16px;
-  background-color: #202020;
+  background-color: #1c1c1c;
   border-radius: 10px;
+  
 }
 
 .form-section h2 {
-  font-size: 1rem;
-  color: #a6c0ee;
+  font-size: 1.05em;
+  font-weight: bold;
+  color: #7fa6e6;
   margin: 0 0 12px;
+
 }
 
 .section-note {
@@ -131,30 +142,150 @@ html, body {
   text-decoration: underline;
 }
 
-.form-row input[type="text"],
-.form-row input[type="number"],
-.form-row input[type="color"],
-.form-row select {
+/* Native fallback for any field type not backed by a WA component. */
+.form-row input[type="color"] {
   flex: 1;
   max-width: 42%;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: none;
-  outline: none;
-  background-color: #313131;
-  color: #fff;
-  font-size: 0.9rem;
-}
-
-.form-row input[type="color"] {
   padding: 4px;
   min-height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  outline: none;
+  background-color: #101010;
+  color: #fff;
 }
 
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
+:root {
+  --field-bg: #101010;
+  --field-border: 1px solid rgba(255, 255, 255, 0.08);
+  --field-radius: 8px;
+  --field-padding: 8px 12px;
+  --field-font-size: 0.9rem;
+  --field-placeholder: #6b7280;
+}
+
+/* WA custom elements render unstyled until they upgrade — hide until then. */
+wa-input:not(:defined),
+wa-select:not(:defined),
+wa-option:not(:defined),
+wa-number-input:not(:defined) {
+  visibility: hidden;
+}
+
+.form-row wa-input,
+.form-row wa-select,
+.form-row wa-number-input {
+  flex: 1;
+  max-width: 42%;
+}
+
+/* height:auto + min-height:0 drops WA's fixed control height so all three
+   controls settle at the same height from their padding alone. */
+.form-row wa-input::part(base),
+.form-row wa-select::part(combobox),
+.form-row wa-number-input::part(base) {
+  background-color: var(--field-bg);
+  border: var(--field-border);
+  border-radius: var(--field-radius);
+  min-height: 0;
+  height: auto;
+}
+
+/* wa-input and wa-select pad the box itself; wa-number-input pads its inner
+   input instead, so its steppers can run the full height of the box. */
+.form-row wa-input::part(base),
+.form-row wa-select::part(combobox) {
+  padding: var(--field-padding);
+}
+
+.form-row wa-input::part(input),
+.form-row wa-select::part(display-input),
+.form-row wa-number-input::part(input) {
+  padding: 0;
+  color: #fff;
+  line-height: 1.2;
+  font-size: var(--field-font-size);
+}
+
+.form-row wa-input::part(input)::placeholder,
+.form-row wa-number-input::part(input)::placeholder {
+  color: var(--field-placeholder);
+}
+
+/* External <label> elements are used rather than WA's slotted label, but the
+   label part still reserves layout space — collapse it. */
+.form-row wa-input::part(form-control-label),
+.form-row wa-select::part(form-control-label),
+.form-row wa-number-input::part(form-control-label) {
+  display: none;
+}
+
+wa-select::part(listbox) {
+  background-color: var(--field-bg);
+  border: var(--field-border);
+  border-radius: var(--field-radius);
+}
+
+/* WA's start/end slots default to `flex: 1 1 0%` plus a 16px outer margin
+   meant to separate slotted icons from the input. Nothing is slotted into
+   them here, so that margin is pure dead space beside the control — collapse
+   both so the input can claim the full middle. */
+.form-row wa-input::part(start),
+.form-row wa-input::part(end),
+.form-row wa-number-input::part(start),
+.form-row wa-number-input::part(end) {
+  flex: 0 0 auto;
   margin: 0;
+}
+
+/* The inner control has to grow into the gap between the two steppers,
+   otherwise it sits at its intrinsic width and the wrapper shows through
+   beside it as a bare strip. */
+.form-row wa-number-input::part(input) {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: var(--field-padding);
+}
+
+/* Flat and transparent so the steppers read as part of one field rather than
+   two buttons crammed against it, and fixed-width so a narrow panel shrinks
+   the number area between them instead of deforming them. */
+.form-row wa-number-input::part(stepper-increment),
+.form-row wa-number-input::part(stepper-decrement) {
+  flex: 0 0 auto;
+  width: 32px;
+  align-self: stretch;
+  margin: 0; /* WA's default 1px would make this control a hair taller than the rest */
+  background: transparent;
+  border: none;
+  color: #bbb;
+}
+
+.form-row wa-number-input::part(stepper-increment):hover,
+.form-row wa-number-input::part(stepper-decrement):hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+wa-color-picker:not(:defined) {
+  visibility: hidden;
+}
+
+.form-row wa-color-picker {
+  flex: 0 0 auto;
+}
+
+/* The settings page uses external <label> elements, not WA's slotted label
+   (see the wa-input/wa-select note above) — the `label` attribute is kept
+   for accessibility but its rendered part must not consume layout space,
+   or it inflates the host's box and throws off the trigger's click target. */
+wa-color-picker::part(form-control-label) {
+  display: none;
+}
+
+wa-color-picker::part(trigger) {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
 }
 
 .switch {
@@ -249,14 +380,23 @@ button:active {
 .utility-button-gray,
 button.utility-button,
 button.utility-button-gray {
-  background-color: #59606b;
+  background: linear-gradient(180deg, #3d3d3d, #292929);
 }
 
 .utility-button:hover,
 .utility-button-gray:hover,
 button.utility-button:hover,
 button.utility-button-gray:hover {
-  background-color: #6b7280;
+  background: linear-gradient(180deg, #484848, #333333);
+}
+
+/* Copy Link and Modal Load colors */
+.primary-button {
+  background: linear-gradient(180deg, #3b82f6, #1c3faa);
+}
+
+.primary-button:hover {
+  filter: brightness(1.1);
 }
 
 .preview-panel {
@@ -354,34 +494,28 @@ body.modal-open .settings-container {
   user-select: none;
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.45);
+wa-dialog:not(:defined) {
+  visibility: hidden;
 }
 
-.modal-overlay.hidden {
-  display: none;
-}
-
-.modal-dialog {
+wa-dialog::part(dialog) {
   width: min(520px, 100%);
   background: #1c1c1c;
   border: 1px solid #2f2f2f;
-  border-radius: 12px;
-  padding: 18px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  color: #fff;
 }
 
-.modal-title {
-  margin: 0 0 10px;
+wa-dialog::part(title) {
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+wa-dialog::part(close-button) {
+  color: #fff;
+}
+
+wa-dialog::part(footer) {
+  justify-content: flex-end;
 }
 
 .modal-note {
@@ -390,21 +524,25 @@ body.modal-open .settings-container {
   font-size: 0.9rem;
 }
 
-.modal-url-input {
-  width: 100%;
-  min-height: 110px;
-  padding: 10px 12px;
-  border: none;
-  outline: none;
-  resize: vertical;
-  border-radius: 8px;
-  background-color: #313131;
-  color: #fff;
-  font: inherit;
+wa-textarea:not(:defined) {
+  visibility: hidden;
 }
 
-.modal-url-input:focus {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+.modal-url-input {
+  display: block;
+  width: 100%;
+}
+
+.modal-url-input::part(textarea-wrapper) {
+  background-color: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.modal-url-input::part(textarea) {
+  color: #fff;
+  min-height: 110px;
+  padding: 10px 12px;
 }
 
 .modal-error {
@@ -413,15 +551,10 @@ body.modal-open .settings-container {
   font-size: 0.85rem;
 }
 
-.modal-button-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.modal-button-row button {
+#confirmLoadSettingsButton {
+  width: auto;
   margin-top: 0;
+  padding: 10px 20px;
 }
 
 .hidden {

@@ -65,11 +65,10 @@
     widgetTitle: document.getElementById('widgetTitle'),
     widgetLogo: document.getElementById('widgetLogo'),
     footer: document.getElementById('settingsFooter'),
-    modalOverlay: document.getElementById('loadSettingsModalOverlay'),
+    modal: document.getElementById('loadSettingsModal'),
     modalUrlInput: document.getElementById('loadSettingsUrlInput'),
     modalError: document.getElementById('loadSettingsError'),
-    confirmLoadSettingsButton: document.getElementById('confirmLoadSettingsButton'),
-    cancelLoadSettingsButton: document.getElementById('cancelLoadSettingsButton')
+    confirmLoadSettingsButton: document.getElementById('confirmLoadSettingsButton')
   };
 
   init().catch((error) => {
@@ -98,6 +97,14 @@
     renderFooter();
     restoreSavedValues();
     wireEvents();
+
+    // WA custom elements upgrade asynchronously; wait for the ones we actually
+    // use so the first updatePreview() reads real .value getters instead of
+    // undefined from not-yet-upgraded elements.
+    await Promise.all(
+      ['wa-input', 'wa-select', 'wa-number-input', 'wa-color-picker'].map((tag) => customElements.whenDefined(tag))
+    );
+
     updatePreview();
     initKofi();
   }
@@ -197,31 +204,65 @@
 
       row.appendChild(labelWrap);
       row.appendChild(switchLabel);
-    } else {
-      input = document.createElement(field.type === 'select' ? 'select' : 'input');
+    } else if (field.type === 'select') {
+      input = document.createElement('wa-select');
       input.id = field.id;
 
-      if (field.type === 'select') {
-        (field.options || []).forEach((option) => {
-          const optionEl = document.createElement('option');
-          optionEl.value = option.value;
-          optionEl.textContent = option.label;
+      (field.options || []).forEach((option) => {
+        const optionEl = document.createElement('wa-option');
+        optionEl.setAttribute('value', option.value);
+        optionEl.textContent = option.label;
 
-          if (String(option.value) === String(field.defaultValue)) {
-            optionEl.selected = true;
-          }
+        if (String(option.value) === String(field.defaultValue)) {
+          optionEl.setAttribute('selected', '');
+        }
 
-          input.appendChild(optionEl);
-        });
-      } else {
-        input.type = field.type;
+        input.appendChild(optionEl);
+      });
 
-        if (field.defaultValue !== undefined) input.value = field.defaultValue;
-        if (field.placeholder) input.placeholder = field.placeholder;
-        if (field.min !== undefined) input.min = field.min;
-        if (field.max !== undefined) input.max = field.max;
-        if (field.step !== undefined) input.step = field.step;
-      }
+      row.appendChild(labelWrap);
+      row.appendChild(input);
+    } else if (field.type === 'number') {
+      input = document.createElement('wa-number-input');
+      input.id = field.id;
+
+      if (field.defaultValue !== undefined && field.defaultValue !== '') input.value = field.defaultValue;
+      if (field.placeholder !== undefined) input.setAttribute('placeholder', field.placeholder);
+      if (field.min !== undefined) input.setAttribute('min', field.min);
+      if (field.max !== undefined) input.setAttribute('max', field.max);
+      if (field.step !== undefined) input.setAttribute('step', field.step);
+
+      row.appendChild(labelWrap);
+      row.appendChild(input);
+    } else if (field.type === 'color-hex' || field.type === 'color-rgba') {
+      input = document.createElement('wa-color-picker');
+      input.id = field.id;
+      input.setAttribute('format', field.type === 'color-rgba' ? 'rgb' : 'hex');
+      if (field.type === 'color-rgba') input.setAttribute('opacity', '');
+      input.setAttribute('label', field.label || '');
+      if (field.defaultValue !== undefined) input.setAttribute('value', field.defaultValue);
+
+      row.appendChild(labelWrap);
+      row.appendChild(input);
+    } else if (field.type === 'text') {
+      input = document.createElement('wa-input');
+      input.id = field.id;
+
+      if (field.defaultValue !== undefined) input.value = field.defaultValue;
+      if (field.placeholder) input.setAttribute('placeholder', field.placeholder);
+
+      row.appendChild(labelWrap);
+      row.appendChild(input);
+    } else {
+      input = document.createElement('input');
+      input.id = field.id;
+      input.type = field.type;
+
+      if (field.defaultValue !== undefined) input.value = field.defaultValue;
+      if (field.placeholder) input.placeholder = field.placeholder;
+      if (field.min !== undefined) input.min = field.min;
+      if (field.max !== undefined) input.max = field.max;
+      if (field.step !== undefined) input.step = field.step;
 
       row.appendChild(labelWrap);
       row.appendChild(input);
@@ -310,18 +351,14 @@
     dom.loadDefaultsButton.addEventListener('click', loadDefaults);
     dom.openLoadSettingsModalButton.addEventListener('click', openLoadSettingsModal);
     dom.confirmLoadSettingsButton.addEventListener('click', handleLoadSettingsConfirm);
-    dom.cancelLoadSettingsButton.addEventListener('click', closeLoadSettingsModal);
 
-    dom.modalOverlay.addEventListener('click', (event) => {
-      if (event.target === dom.modalOverlay) {
-        closeLoadSettingsModal();
-      }
+    dom.modal.addEventListener('wa-show', () => {
+      document.body.classList.add('modal-open');
     });
 
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !dom.modalOverlay.classList.contains('hidden')) {
-        closeLoadSettingsModal();
-      }
+    dom.modal.addEventListener('wa-after-hide', () => {
+      document.body.classList.remove('modal-open');
+      dom.modalError.classList.add('hidden');
     });
   }
 
@@ -340,7 +377,8 @@
         if (field.type === 'checkbox') {
           values[field.id] = element.checked;
         } else if (field.type === 'number') {
-          values[field.id] = element.value === '' ? '' : Number(element.value);
+          const raw = element.value;
+          values[field.id] = (raw === '' || raw === null || raw === undefined) ? '' : Number(raw);
         } else {
           values[field.id] = element.value;
         }
@@ -477,9 +515,7 @@
   function openLoadSettingsModal() {
     dom.modalUrlInput.value = '';
     dom.modalError.classList.add('hidden');
-    dom.modalOverlay.classList.remove('hidden');
-    dom.modalOverlay.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('modal-open');
+    dom.modal.open = true;
 
     setTimeout(() => {
       dom.modalUrlInput.focus();
@@ -487,10 +523,7 @@
   }
 
   function closeLoadSettingsModal() {
-    dom.modalOverlay.classList.add('hidden');
-    dom.modalOverlay.setAttribute('aria-hidden', 'true');
-    dom.modalError.classList.add('hidden');
-    document.body.classList.remove('modal-open');
+    dom.modal.open = false;
   }
 
   function handleLoadSettingsConfirm() {
