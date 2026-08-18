@@ -20,6 +20,54 @@ html, body, * {
   color: #fff;
 }
 
+/* Loading overlay - shown until the WA custom elements loaded, so the user never sees a pre-upgrade flash. */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+
+  background-color: #181818;
+
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Named apart from the shared `.hidden` utility (display:none !important
+   below) — that would snap this away instantly and skip the fade entirely,
+   since display can't be transitioned once !important forces it off. */
+#loading-overlay.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loading-logo {
+  width: 86px;
+  height: 86px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 8px solid rgba(63, 141, 230, 0.4);
+  border-top-color: #2466cf;
+  border-radius: 50%;
+  animation: loading-spinner-spin 0.75s linear infinite;
+}
+
+@keyframes loading-spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .settings-container {
   display: flex;
   height: 100vh;

@@ -68,7 +68,8 @@
     modal: document.getElementById('loadSettingsModal'),
     modalUrlInput: document.getElementById('loadSettingsUrlInput'),
     modalError: document.getElementById('loadSettingsError'),
-    confirmLoadSettingsButton: document.getElementById('confirmLoadSettingsButton')
+    confirmLoadSettingsButton: document.getElementById('confirmLoadSettingsButton'),
+    loadingOverlay: document.getElementById('loading-overlay')
   };
 
   init().catch((error) => {
@@ -98,15 +99,29 @@
     restoreSavedValues();
     wireEvents();
 
-    // WA custom elements upgrade asynchronously; wait for the ones we actually
-    // use so the first updatePreview() reads real .value getters instead of
-    // undefined from not-yet-upgraded elements.
-    await Promise.all(
-      ['wa-input', 'wa-select', 'wa-number-input', 'wa-color-picker'].map((tag) => customElements.whenDefined(tag))
-    );
+    // WA custom elements upgrade asynchronously; wait for every tag used on
+    // the page (dynamically-built fields plus the static wa-dialog/wa-textarea
+    // in the modal) so the first updatePreview() reads real .value getters
+    // instead of undefined from not-yet-upgraded elements, and so the loading
+    // overlay covers the whole pre-upgrade flash rather than just part of it.
+    await waitForCustomElements();
 
     updatePreview();
     initKofi();
+    hideLoadingOverlay();
+  }
+
+  function waitForCustomElements(timeoutMs = 8000) {
+    const tags = ['wa-input', 'wa-select', 'wa-option', 'wa-number-input', 'wa-color-picker', 'wa-dialog', 'wa-textarea'];
+    const ready = Promise.all(tags.map((tag) => customElements.whenDefined(tag)));
+
+    // Race against a timeout so a CDN hiccup can't strand the user on the
+    // spinner forever — worst case they see an unstyled flash instead.
+    return Promise.race([ready, new Promise((resolve) => setTimeout(resolve, timeoutMs))]);
+  }
+
+  function hideLoadingOverlay() {
+    dom.loadingOverlay?.classList.add('is-hidden');
   }
 
   function loadScript(src) {
