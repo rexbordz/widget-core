@@ -179,41 +179,74 @@ const Utils = {
     }
   },
 
+  // Escapes text before it goes into innerHTML. Every user-controlled string
+  // in getTwitchMessageFromParts runs through this.
+  escapeHtml(value) {
+    const chars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return String(value ?? '').replace(/[&<>"']/g, (char) => chars[char]);
+  },
+
   // credits to vortisRD
+  // Builds an HTML string from Twitch's structured `data.parts`. Prefer this
+  // over regex-replacing `data.text` — Twitch has already told us exactly where
+  // each emote/cheer sits, so there's nothing to pattern-match and no risk of a
+  // replacement landing inside a URL of a previously-inserted tag.
   async getTwitchMessageFromParts(parts, data = null) {
-    const html = parts.map(part => {
+    if (!Array.isArray(parts)) return '';
+
+    return parts.map((part) => {
+      if (!part) return '';
 
       switch (part.type) {
         case 'emote': {
-          if (part.source === "Twemoji") {
-            return escapeHTML(part.text);
+          if (part.source === 'Twemoji') {
+            return Utils.escapeHtml(part.text);
           }
 
           let url = part.imageUrl;
+          if (!url) return Utils.escapeHtml(part.text);
+
           switch (part.source) {
             case '7TVChannel':   url = url.replace('/4x', '/1x'); break;
             case 'FrankerFaceZ': url = url.replace('/4', '/1'); break;
             case 'BetterTTV':    url = url.replace('/3x', '/1x'); break;
           }
 
-          return `<img src="${escapeHTML(url)}" alt="${escapeHTML(part.text)}" title="${escapeHTML(part.text)}" class="emote">`;
+          const label = Utils.escapeHtml(part.text);
+          return `<img src="${Utils.escapeHtml(url)}" alt="${label}" title="${label}" class="emote">`;
+        }
+
+        // Cheers were previously dropped (returned ''), which is why a cheer-only
+        // message rendered as nothing but the spaces between the cheermotes.
+        case 'cheer': {
+          if (!part.imageUrl) return Utils.escapeHtml(part.text);
+
+          const label = Utils.escapeHtml(part.text);
+          const image = `<img src="${Utils.escapeHtml(part.imageUrl)}" alt="${label}" title="${label}" class="emote">`;
+
+          if (part.bits === undefined || part.bits === null) return image;
+
+          // Only trust a plain hex colour — this value lands in a style attribute.
+          const safeColor = /^#[0-9a-f]{3,8}$/i.test(part.color || '') ? part.color : null;
+          const style = safeColor ? ` style="color:${safeColor}"` : '';
+
+          return `${image}<span class="bits"${style}>${Utils.escapeHtml(part.bits)}</span>`;
         }
 
         case 'gif': {
-          let url = part.url;
-          let description = data.text.replace(/[\[\]]/g, '');
-          return `<img class="embedded twitch-giphy-integration" src="${url}" alt="${description}" title="${description}">`;
+          const url = part.url || part.imageUrl;
+          if (!url) return Utils.escapeHtml(part.text);
+
+          // `data` is optional, so fall back to the part's own text rather than
+          // throwing when it isn't passed.
+          const description = Utils.escapeHtml(String(data?.text ?? part.text ?? '').replace(/[\[\]]/g, ''));
+          return `<img class="embedded twitch-giphy-integration" src="${Utils.escapeHtml(url)}" alt="${description}" title="${description}">`;
         }
 
-        case 'cheer':
-          return '';
-
         default:
-          return escapeHTML(part.text);
+          return Utils.escapeHtml(part.text);
       }
 
     }).join('');
-
-    return html;
   }
 };
