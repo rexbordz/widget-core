@@ -1,178 +1,219 @@
-async function GetTwitchAvatar(username) {
-  const url = `https://decapi.me/twitch/avatar/${encodeURIComponent(username)}`;
+const Utils = {
+  async getTwitchAvatar(username) {
+    const url = `https://decapi.me/twitch/avatar/${encodeURIComponent(username)}`;
 
-  try {
-    const response = await fetch(url);
-    return await response.text();
+    try {
+      const response = await fetch(url);
+      return await response.text();
 
-  } catch (err) {
-    console.error(`[getTwitchAvatar] Error fetching avatar for "${username}": ${err.message}`);
-  }
-}
-
-async function GetKickAvatar(username) {
-  try {
-    const response = await fetch(`https://kick.com/api/v2/channels/${username}`);
-    const data = await response.json();
-	const genericAvatar = "https://files.kick.com/images/user/4545493/profile_image/conversion/default1-medium.webp";
-    let profilePicUrl = data.user?.profile_pic || genericAvatar;
-
-    if (profilePicUrl) {
-      // Replace 'fullsize' with 'medium'
-      profilePicUrl = profilePicUrl.replace("fullsize", "medium");
+    } catch (err) {
+      console.error(`[getTwitchAvatar] Error fetching avatar for "${username}": ${err.message}`);
     }
-    return profilePicUrl;
+  },
 
-  } catch (err) {
-    console.error("Error fetching Kick profile picture:", err);
-    return genericAvatar;
-  }
-}
+  async getKickAvatar(username) {
+    const genericAvatar = "https://files.kick.com/images/user/4545493/profile_image/conversion/default1-medium.webp";
 
-// credits to nutty. Use this to get the super sticker URL.
-function FindFirstImageUrl(jsonObject) {
-	if (typeof jsonObject !== 'object' || jsonObject === null) {
-		return null; // Handle invalid input
-	}
+    try {
+      const response = await fetch(`https://kick.com/api/v2/channels/${username}`);
+      const data = await response.json();
+      let profilePicUrl = data.user?.profile_pic || genericAvatar;
 
-	function iterate(obj) {
-		if (Array.isArray(obj)) {
-			for (const item of obj) {
-				const result = iterate(item);
-				if (result) {
-					return result;
-				}
-			}
-			return null;
-		}
+      if (profilePicUrl) {
+        // Replace 'fullsize' with 'medium'
+        profilePicUrl = profilePicUrl.replace("fullsize", "medium");
+      }
+      return profilePicUrl;
 
-		for (const key in obj) {
-			if (obj.hasOwnProperty(key)) {
-				if (key === 'imageUrl') {
-					return obj[key]; // Found it! Return the value.
-				}
+    } catch (err) {
+      console.error("Error fetching Kick profile picture:", err);
+      return genericAvatar;
+    }
+  },
 
-				if (typeof obj[key] === 'object' && obj[key] !== null) {
-					const result = iterate(obj[key]); // Recursive call for nested objects
-					if (result) {
-						return result; // Propagate the found value
-					}
-				}
-			}
-		}
-		return null; // Key not found in this level
-	}
-
-	return iterate(jsonObject);
-}
-
-function RenderTwitchEmotes(message, data) {
-  if (!message || !Array.isArray(data?.emotes) || !data.emotes.length) {
-    return message;
-  }
-
-  let renderedMessage = message;
-
-  for (const emote of data.emotes) {
-    if (!emote?.name || !emote?.imageUrl) continue;
-
-    const emoteElement = `<img src="${emote.imageUrl}" class="emote"/>`;
-
-    // Escape regex characters directly here
-    const escapedName = emote.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-    let regexPattern = escapedName;
-
-    if (/^\w+$/.test(emote.name)) {
-      regexPattern = `\\b${escapedName}\\b`;
-    } else {
-      regexPattern = `(?<=^|[^\\w])${escapedName}(?=$|[^\\w])`;
+  // credits to nutty. Use this to get the super sticker URL.
+  findFirstImageUrl(jsonObject) {
+    if (typeof jsonObject !== 'object' || jsonObject === null) {
+      return null; // Handle invalid input
     }
 
-    const regex = new RegExp(regexPattern, "g");
-    renderedMessage = renderedMessage.replace(regex, emoteElement);
-  }
+    function iterate(obj) {
+      if (Array.isArray(obj)) {
+        for (const item of obj) {
+          const result = iterate(item);
+          if (result) {
+            return result;
+          }
+        }
+        return null;
+      }
 
-  return renderedMessage;
-}
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          if (key === 'imageUrl') {
+            return obj[key]; // Found it! Return the value.
+          }
 
-function RenderCheermotes(message, data) {
-  if (!message || !Array.isArray(data?.cheerEmotes) || !data.cheerEmotes.length) {
-    return message;
-  }
+          if (typeof obj[key] === 'object' && obj[key] !== null) {
+            const result = iterate(obj[key]); // Recursive call for nested objects
+            if (result) {
+              return result; // Propagate the found value
+            }
+          }
+        }
+      }
+      return null; // Key not found in this level
+    }
 
-  let renderedMessage = message;
+    return iterate(jsonObject);
+  },
 
-  for (const cheerEmote of data.cheerEmotes) {
-    if (!cheerEmote?.name || !cheerEmote?.bits || !cheerEmote?.imageUrl) continue;
+  renderTwitchEmotes(message, data) {
+    if (!message || !Array.isArray(data?.emotes) || !data.emotes.length) {
+      return message;
+    }
 
-    const bits = cheerEmote.bits;
-    const imageUrl = cheerEmote.imageUrl;
+    let renderedMessage = message;
 
-    // Escape regex characters directly here
-    const escapedName = cheerEmote.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    for (const emote of data.emotes) {
+      if (!emote?.name || !emote?.imageUrl) continue;
 
-    const cheerEmoteElement = `<img src="${imageUrl}" class="emote"/>`;
-    const bitsElement = `<span class="bits">${bits}</span>`;
+      const emoteElement = `<img src="${emote.imageUrl}" class="emote"/>`;
 
-    const regex = new RegExp(`\\b${escapedName}${bits}\\b`, "gi");
+      // Escape regex characters directly here
+      const escapedName = emote.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    renderedMessage = renderedMessage.replace(
-      regex,
-      `${cheerEmoteElement}${bitsElement}`
-    );
-  }
+      let regexPattern = escapedName;
 
-  return renderedMessage;
-}
+      if (/^\w+$/.test(emote.name)) {
+        regexPattern = `\\b${escapedName}\\b`;
+      } else {
+        regexPattern = `(?<=^|[^\\w])${escapedName}(?=$|[^\\w])`;
+      }
 
-async function GetKickIds(username) {
+      const regex = new RegExp(regexPattern, "g");
+      renderedMessage = renderedMessage.replace(regex, emoteElement);
+    }
+
+    return renderedMessage;
+  },
+
+  renderCheermotes(message, data) {
+    if (!message || !Array.isArray(data?.cheerEmotes) || !data.cheerEmotes.length) {
+      return message;
+    }
+
+    let renderedMessage = message;
+
+    for (const cheerEmote of data.cheerEmotes) {
+      if (!cheerEmote?.name || !cheerEmote?.bits || !cheerEmote?.imageUrl) continue;
+
+      const bits = cheerEmote.bits;
+      const imageUrl = cheerEmote.imageUrl;
+
+      // Escape regex characters directly here
+      const escapedName = cheerEmote.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      const cheerEmoteElement = `<img src="${imageUrl}" class="emote"/>`;
+      const bitsElement = `<span class="bits">${bits}</span>`;
+
+      const regex = new RegExp(`\\b${escapedName}${bits}\\b`, "gi");
+
+      renderedMessage = renderedMessage.replace(
+        regex,
+        `${cheerEmoteElement}${bitsElement}`
+      );
+    }
+
+    return renderedMessage;
+  },
+
+  async getKickIds(username) {
     // First attempt with the original username
     let url = `https://kick.com/api/v2/channels/${username}`;
 
     try {
-        let response = await fetch(url);
+      let response = await fetch(url);
+      if (!response.ok) {
+        // Retry with underscores replaced by dashes
+        const altUsername = username.replace(/_/g, "-");
+        url = `https://kick.com/api/v2/channels/${altUsername}`;
+        response = await fetch(url);
         if (!response.ok) {
-            // Retry with underscores replaced by dashes
-            const altUsername = username.replace(/_/g, "-");
-            url = `https://kick.com/api/v2/channels/${altUsername}`;
-            response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
+          throw new Error(`HTTP error ${response.status}`);
         }
+      }
 
-        const data = await response.json();
-        if (data.chatroom && data.chatroom.id) {
-            return { chatroomId: data.chatroom.id, channelId: data.chatroom.channel_id };
-        } else {
-            throw new Error("Chatroom ID not found in response.");
-        }
+      const data = await response.json();
+      if (data.chatroom && data.chatroom.id) {
+        return { chatroomId: data.chatroom.id, channelId: data.chatroom.channel_id };
+      } else {
+        throw new Error("Chatroom ID not found in response.");
+      }
     } catch (error) {
-        console.error("Failed to fetch chatroom ID:", error.message);
-        return null;
+      console.error("Failed to fetch chatroom ID:", error.message);
+      return null;
     }
-}
+  },
 
-async function GetKickSubBadges(username) {
+  async getKickSubBadges(username) {
     let url = `https://kick.com/api/v2/channels/${username}`;
 
     try {
-        let response = await fetch(url);
+      let response = await fetch(url);
+      if (!response.ok) {
+        // Retry with underscores replaced by dashes
+        const altUsername = username.replace(/_/g, "-");
+        url = `https://kick.com/api/v2/channels/${altUsername}`;
+        response = await fetch(url);
         if (!response.ok) {
-            // Retry with underscores replaced by dashes
-            const altUsername = username.replace(/_/g, "-");
-            url = `https://kick.com/api/v2/channels/${altUsername}`;
-            response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
+          throw new Error(`HTTP error ${response.status}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.subscriber_badges || [];
+    } catch (error) {
+      console.error("Failed to fetch subscriber badges:", error.message);
+      return [];
+    }
+  },
+
+  // credits to vortisRD
+  async getTwitchMessageFromParts(parts, data = null) {
+    const html = parts.map(part => {
+
+      switch (part.type) {
+        case 'emote': {
+          if (part.source === "Twemoji") {
+            return escapeHTML(part.text);
+          }
+
+          let url = part.imageUrl;
+          switch (part.source) {
+            case '7TVChannel':   url = url.replace('/4x', '/1x'); break;
+            case 'FrankerFaceZ': url = url.replace('/4', '/1'); break;
+            case 'BetterTTV':    url = url.replace('/3x', '/1x'); break;
+          }
+
+          return `<img src="${escapeHTML(url)}" alt="${escapeHTML(part.text)}" title="${escapeHTML(part.text)}" class="emote">`;
         }
 
-        const data = await response.json();
-        return data.subscriber_badges || [];
-    } catch (error) {
-        console.error("Failed to fetch subscriber badges:", error.message);
-        return [];
-    }
-}
+        case 'gif': {
+          let url = part.url;
+          let description = data.text.replace(/[\[\]]/g, '');
+          return `<img class="embedded twitch-giphy-integration" src="${url}" alt="${description}" title="${description}">`;
+        }
+
+        case 'cheer':
+          return '';
+
+        default:
+          return escapeHTML(part.text);
+      }
+
+    }).join('');
+
+    return html;
+  }
+};
