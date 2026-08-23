@@ -112,7 +112,18 @@
   }
 
   function waitForCustomElements(timeoutMs = 8000) {
-    const tags = ['wa-input', 'wa-select', 'wa-option', 'wa-number-input', 'wa-color-picker', 'wa-dialog', 'wa-textarea'];
+    // Ask the DOM which WA elements are actually on the page rather than
+    // hardcoding a list. WA's autoloader only ever defines elements it finds
+    // here, so waiting on a fixed list stalls until the timeout whenever a
+    // config doesn't happen to use one of them — a widget with no colour
+    // fields never creates a wa-color-picker, and that alone cost 8 seconds.
+    // Must run after renderSections(), once the fields exist.
+    const tags = [...new Set(
+      Array.from(document.querySelectorAll(':not(:defined)'))
+        .map((el) => el.tagName.toLowerCase())
+        .filter((tag) => tag.startsWith('wa-'))
+    )];
+
     const ready = Promise.all(tags.map((tag) => customElements.whenDefined(tag)));
 
     // Race against a timeout so a CDN hiccup can't strand the user on the
