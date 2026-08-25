@@ -99,11 +99,6 @@ html, body, * {
   background: transparent;
 }
 
-.panel-resizer:hover,
-.panel-resizer.is-active {
-  background: #3b82f6;
-}
-
 body.panel-resizing {
   cursor: col-resize;
   user-select: none;
@@ -490,6 +485,7 @@ button.utility-button-gray:hover {
   width: 100%;
   height: 100%;
   background: transparent;
+  color-scheme: normal;   /* must match the widget doc's scheme, or Chrome paints an opaque canvas */
   border: none;
 }
 
