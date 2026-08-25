@@ -65,6 +65,8 @@
     widgetTitle: document.getElementById('widgetTitle'),
     widgetLogo: document.getElementById('widgetLogo'),
     footer: document.getElementById('settingsFooter'),
+    settingsPanel: document.querySelector('.settings-panel'),
+    panelResizer: document.getElementById('panelResizer'),
     modal: document.getElementById('loadSettingsModal'),
     modalUrlInput: document.getElementById('loadSettingsUrlInput'),
     modalError: document.getElementById('loadSettingsError'),
@@ -385,6 +387,39 @@
     dom.modal.addEventListener('wa-after-hide', () => {
       document.body.classList.remove('modal-open');
       dom.modalError.classList.add('hidden');
+    });
+
+    wirePanelResizer();
+  }
+
+  function wirePanelResizer() {
+    const PANEL_MIN_WIDTH = 360;
+    const PANEL_MAX_WIDTH = 720;
+
+    dom.panelResizer.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+
+      const startX = event.clientX;
+      const startWidth = dom.settingsPanel.getBoundingClientRect().width;
+
+      document.body.classList.add('panel-resizing');
+      dom.panelResizer.classList.add('is-active');
+
+      const onMouseMove = (moveEvent) => {
+        const newWidth = startWidth + (moveEvent.clientX - startX);
+        const clampedWidth = Math.min(PANEL_MAX_WIDTH, Math.max(PANEL_MIN_WIDTH, newWidth));
+        dom.settingsPanel.style.width = clampedWidth + 'px';
+      };
+
+      const onMouseUp = () => {
+        document.body.classList.remove('panel-resizing');
+        dom.panelResizer.classList.remove('is-active');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
   }
 
