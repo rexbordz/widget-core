@@ -31,6 +31,13 @@
       <div class="settings-header">
         <img id="widgetLogo" src="../../assets/images/rexbordz-blue-and-white-gradient-logo.png" alt="Widget Logo" class="widget-logo">
         <h1 id="widgetTitle" class="widget-title">Widget Settings</h1>
+
+        <div class="header-actions">
+          <button id="obsConnectButton" class="obs-connect-btn" type="button" title="Disconnected from OBS">
+            <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" alt="OBS" class="obs-icon">
+            <span id="obsStatusDot" class="obs-status-dot offline"></span>
+          </button>
+        </div>
       </div>
 
       <div class="settings-body">
@@ -71,6 +78,31 @@
 
     <button id="confirmLoadSettingsButton" slot="footer" type="button" class="primary-button">Load</button>
   </wa-dialog>
+
+  <wa-dialog id="obsConnectionDialog" class="obs-connection-dialog" label="Connect OBS" light-dismiss>
+    <div slot="label" class="obs-modal-header">
+      <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" class="obs-modal-icon" alt="OBS logo">
+      <span class="obs-modal-title">Connect OBS</span>
+    </div>
+
+    <div id="obsModalWarning" class="obs-modal-warning hidden">Disconnected from OBS</div>
+
+    <div class="obs-form-group">
+      <label for="obsPort">Port</label>
+      <input type="text" id="obsPort" inputmode="numeric" autocomplete="off">
+    </div>
+
+    <div class="obs-form-group">
+      <wa-input id="obsPassword" type="password" password-toggle autocomplete="off">
+        <span slot="label">Password</span>
+      </wa-input>
+    </div>
+
+    <button id="obsConnectSubmit" type="button" class="obs-modal-button" autofocus>Connect</button>
+  </wa-dialog>
+
+  <!-- OBS WebSocket client -->
+  <script src="https://cdn.jsdelivr.net/npm/obs-websocket-js@5/dist/obs-ws.js"></script>
 
   <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
   <script src="./script.js"></script>

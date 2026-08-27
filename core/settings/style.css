@@ -148,6 +148,191 @@ body.panel-resizing .preview-panel iframe {
   line-height: 1.2;
 }
 
+/* OBS connect button */
+
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.obs-connect-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1f1f1f;
+  color: #bbb;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.obs-connect-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.obs-connect-btn:hover::before {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+.obs-connect-btn:hover {
+  color: #fff;
+}
+
+.obs-icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.obs-status-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  z-index: 2;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.obs-status-dot.online {
+  background-color: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.8), 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+.obs-status-dot.offline {
+  background-color: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.7), 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+/* OBS connection modal */
+
+#obsConnectionDialog::part(dialog) {
+  width: min(380px, 100%);
+}
+
+.obs-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.obs-modal-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.obs-modal-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.obs-modal-warning {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  font-size: 0.85rem;
+  font-weight: bold;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  margin-bottom: 14px;
+}
+
+.obs-form-group {
+  margin-bottom: 14px;
+}
+
+.obs-form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.obs-form-group input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 10px;
+  color: #fff;
+  outline: none;
+  font-size: 0.9rem;
+}
+
+.obs-form-group input:focus {
+  border-color: #3e96ff;
+  box-shadow: 0 0 0 2px #3e96ff;
+}
+
+.obs-form-group wa-input {
+  display: block;
+  width: 100%;
+}
+
+.obs-form-group wa-input::part(base) {
+  background-color: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  min-height: 0;
+  height: auto;
+}
+
+.obs-form-group wa-input::part(input) {
+  color: #fff;
+  padding: 12px 10px;
+  font-size: 0.9rem;
+}
+
+.obs-modal-button {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(180deg, #3d3d3d, #292929);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.obs-modal-button:hover {
+  background: linear-gradient(180deg, #484848, #333333);
+}
+
+.obs-modal-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .form-section {
   margin-bottom: 22px;
   padding: 16px;

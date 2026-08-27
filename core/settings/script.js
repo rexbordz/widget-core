@@ -71,8 +71,22 @@
     modalUrlInput: document.getElementById('loadSettingsUrlInput'),
     modalError: document.getElementById('loadSettingsError'),
     confirmLoadSettingsButton: document.getElementById('confirmLoadSettingsButton'),
-    loadingOverlay: document.getElementById('loading-overlay')
+    loadingOverlay: document.getElementById('loading-overlay'),
+    obsConnectButton: document.getElementById('obsConnectButton'),
+    obsStatusDot: document.getElementById('obsStatusDot'),
+    obsConnectionDialog: document.getElementById('obsConnectionDialog'),
+    obsModalWarning: document.getElementById('obsModalWarning'),
+    obsPort: document.getElementById('obsPort'),
+    obsPassword: document.getElementById('obsPassword'),
+    obsConnectSubmit: document.getElementById('obsConnectSubmit')
   };
+
+  const OBS_STORAGE_KEYS = { port: 'obs_ws_port', password: 'obs_ws_password' };
+  const OBS_DEFAULT_PORT = '4455';
+
+  let obs = null;
+  let obsConnected = false;
+  let obsConnecting = false;
 
   init().catch((error) => {
     console.error(error);
@@ -110,6 +124,7 @@
 
     updatePreview();
     initKofi();
+    initObs();
     hideLoadingOverlay();
   }
 
@@ -679,5 +694,122 @@
     if (!window.kofiWidgetOverlay) return;
     window.kofiWidgetOverlay.draw(GLOBAL_KOFI.username, GLOBAL_KOFI.options);
   }
-  
+
+  function loadObsSettings() {
+    return {
+      port: localStorage.getItem(OBS_STORAGE_KEYS.port) || OBS_DEFAULT_PORT,
+      password: localStorage.getItem(OBS_STORAGE_KEYS.password) || ''
+    };
+  }
+
+  function saveObsSettings(port, password) {
+    localStorage.setItem(OBS_STORAGE_KEYS.port, port);
+    localStorage.setItem(OBS_STORAGE_KEYS.password, password);
+  }
+
+  function updateObsStatus() {
+    if (!dom.obsStatusDot) return;
+    dom.obsStatusDot.classList.toggle('online', obsConnected);
+    dom.obsStatusDot.classList.toggle('offline', !obsConnected);
+    if (dom.obsConnectButton) {
+      dom.obsConnectButton.title = obsConnected ? 'Connected to OBS' : 'Disconnected from OBS';
+    }
+  }
+
+  async function connectObs(port, password) {
+    if (obsConnecting) return;
+    obsConnecting = true;
+
+    if (obs) {
+      try {
+        await obs.disconnect();
+      } catch (error) {
+        // already disconnected, ignore
+      }
+    }
+
+    if (!window.OBSWebSocket) {
+      console.warn('obs-websocket-js failed to load; cannot connect to OBS.');
+      obsConnecting = false;
+      obsConnected = false;
+      updateObsStatus();
+      resetObsConnectSubmit();
+      return;
+    }
+
+    obs = new window.OBSWebSocket();
+
+    obs.on('ConnectionClosed', () => {
+      obsConnected = false;
+      obsConnecting = false;
+      updateObsStatus();
+      if (dom.obsModalWarning) dom.obsModalWarning.classList.remove('hidden');
+    });
+
+    try {
+      await obs.connect(`ws://127.0.0.1:${port}`, password || undefined);
+      obsConnected = true;
+      obsConnecting = false;
+      saveObsSettings(port, password);
+      updateObsStatus();
+      if (dom.obsModalWarning) dom.obsModalWarning.classList.add('hidden');
+      closeObsModal();
+    } catch (error) {
+      console.warn('Failed to connect to OBS:', error?.message || error);
+      obsConnected = false;
+      obsConnecting = false;
+      updateObsStatus();
+      if (dom.obsModalWarning) dom.obsModalWarning.classList.remove('hidden');
+    } finally {
+      resetObsConnectSubmit();
+    }
+  }
+
+  function resetObsConnectSubmit() {
+    if (!dom.obsConnectSubmit) return;
+    dom.obsConnectSubmit.disabled = false;
+    dom.obsConnectSubmit.textContent = 'Connect';
+  }
+
+  function openObsModal() {
+    const saved = loadObsSettings();
+    dom.obsPort.value = saved.port;
+    dom.obsPassword.value = saved.password;
+    if (dom.obsModalWarning) dom.obsModalWarning.classList.toggle('hidden', obsConnected);
+    dom.obsConnectionDialog.open = true;
+  }
+
+  function closeObsModal() {
+    dom.obsConnectionDialog.open = false;
+  }
+
+  function initObs() {
+    if (!dom.obsConnectButton || !dom.obsConnectionDialog) return;
+
+    updateObsStatus();
+
+    dom.obsConnectButton.addEventListener('click', openObsModal);
+
+    dom.obsConnectionDialog.addEventListener('wa-show', () => {
+      document.body.classList.add('modal-open');
+    });
+
+    dom.obsConnectionDialog.addEventListener('wa-after-hide', () => {
+      document.body.classList.remove('modal-open');
+    });
+
+    dom.obsConnectSubmit.addEventListener('click', () => {
+      const port = dom.obsPort.value.trim() || OBS_DEFAULT_PORT;
+      const password = dom.obsPassword.value.trim();
+
+      dom.obsConnectSubmit.disabled = true;
+      dom.obsConnectSubmit.textContent = 'Connecting...';
+
+      connectObs(port, password);
+    });
+
+    const saved = loadObsSettings();
+    connectObs(saved.port, saved.password);
+  }
+
 })();
