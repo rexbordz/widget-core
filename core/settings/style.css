@@ -166,7 +166,7 @@ body.panel-resizing .preview-panel iframe {
   padding: 0;
   border-radius: 10px;
   border: none;
-  background: #1f1f1f;
+  background: none;
   color: #bbb;
   position: relative;
   display: flex;
@@ -197,7 +197,7 @@ body.panel-resizing .preview-panel iframe {
 }
 
 .obs-connect-btn:hover {
-  background-color: #1f1f1f;
+  background: none;
   color: #fff;
 }
 
