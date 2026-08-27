@@ -165,7 +165,7 @@ body.panel-resizing .preview-panel iframe {
   margin-top: 0;
   padding: 0;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
   background: #1f1f1f;
   color: #bbb;
   position: relative;
@@ -197,6 +197,7 @@ body.panel-resizing .preview-panel iframe {
 }
 
 .obs-connect-btn:hover {
+  background-color: #1f1f1f;
   color: #fff;
 }
 
@@ -266,34 +267,16 @@ body.panel-resizing .preview-panel iframe {
   margin-bottom: 14px;
 }
 
-.obs-form-group label {
+.obs-form-group wa-input {
+  display: block;
+  width: 100%;
+}
+
+.obs-form-group wa-input::part(form-control-label) {
   font-size: 0.85rem;
   font-weight: 600;
   color: #fff;
   margin-bottom: 8px;
-  display: block;
-}
-
-.obs-form-group input {
-  width: 100%;
-  box-sizing: border-box;
-  background: #101010;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 12px 10px;
-  color: #fff;
-  outline: none;
-  font-size: 0.9rem;
-}
-
-.obs-form-group input:focus {
-  border-color: #3e96ff;
-  box-shadow: 0 0 0 2px #3e96ff;
-}
-
-.obs-form-group wa-input {
-  display: block;
-  width: 100%;
 }
 
 .obs-form-group wa-input::part(base) {
@@ -302,6 +285,11 @@ body.panel-resizing .preview-panel iframe {
   border-radius: 8px;
   min-height: 0;
   height: auto;
+}
+
+.obs-form-group wa-input::part(base):focus-within {
+  border-color: #3e96ff;
+  box-shadow: 0 0 0 2px #3e96ff;
 }
 
 .obs-form-group wa-input::part(input) {
@@ -796,6 +784,13 @@ wa-dialog::part(title) {
 
 wa-dialog::part(close-button) {
   color: #fff;
+  --wa-color-fill-quiet: transparent !important;
+}
+
+wa-dialog::part(close-button):hover,
+wa-dialog::part(close-button):focus-visible {
+  color: #fff;
+  filter: brightness(1.5);
 }
 
 wa-dialog::part(footer) {

@@ -83,10 +83,12 @@
 
   const OBS_STORAGE_KEYS = { port: 'obs_ws_port', password: 'obs_ws_password' };
   const OBS_DEFAULT_PORT = '4455';
+  const OBS_RETRY_INTERVAL_MS = 5000;
 
   let obs = null;
   let obsConnected = false;
   let obsConnecting = false;
+  let obsRetryTimer = null;
 
   init().catch((error) => {
     console.error(error);
@@ -765,6 +767,15 @@
     }
   }
 
+  function startObsRetryLoop() {
+    if (obsRetryTimer) return;
+    obsRetryTimer = setInterval(() => {
+      if (obsConnected || obsConnecting) return;
+      const saved = loadObsSettings();
+      connectObs(saved.port, saved.password);
+    }, OBS_RETRY_INTERVAL_MS);
+  }
+
   function resetObsConnectSubmit() {
     if (!dom.obsConnectSubmit) return;
     dom.obsConnectSubmit.disabled = false;
@@ -810,6 +821,7 @@
 
     const saved = loadObsSettings();
     connectObs(saved.port, saved.password);
+    startObsRetryLoop();
   }
 
 })();
