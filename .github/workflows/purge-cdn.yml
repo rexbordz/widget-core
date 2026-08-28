@@ -3,10 +3,22 @@ name: Purge jsDelivr CDN cache
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   purge:
     runs-on: ubuntu-latest
     steps:
-      - name: Purge jsDelivr cache for widget-core@main
-        run: curl -fsS "https://purge.jsdelivr.net/gh/rexbordz/widget-core@main/"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # jsDelivr only purges the exact paths it is given - purging a directory
+      # (or the repo root) does NOT cascade to the files beneath it, so every
+      # tracked file has to be named explicitly.
+      - name: Purge every tracked file
+        run: |
+          for file in $(git ls-files | grep -v '^\.github/'); do
+            url="https://purge.jsdelivr.net/gh/${{ github.repository }}@main/$file"
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url")
+            echo "$code  $file"
+          done
