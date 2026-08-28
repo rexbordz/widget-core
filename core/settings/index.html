@@ -56,7 +56,7 @@
 
         <button id="createSourceButton" class="header-button header-button-primary" type="button">
           <img src="https://api.iconify.design/mdi:plus.svg?color=%23ffffff" alt="" class="header-button-icon">
-          Auto Create Source on OBS
+          Add New Source to OBS
         </button>
 
         <button id="loadFromObsButton" class="header-button" type="button">
@@ -65,8 +65,8 @@
           <span id="obsSourceCount" class="header-button-badge">0</span>
         </button>
 
-        <!-- Load Default: ripple + CSS tooltip, no visible label -->
-        <button id="loadDefaultsButton" class="header-ripple-button" type="button" aria-label="Load Default" data-tooltip="Load Default">
+        <!-- Load Defaults: ripple + CSS tooltip, no visible label -->
+        <button id="loadDefaultsButton" class="header-ripple-button" type="button" aria-label="Load Defaults" data-tooltip="Load Defaults">
           <img src="https://api.iconify.design/icon-park-outline:undo.svg?color=%23d6d6d6" alt="" class="header-icon">
         </button>
 
@@ -97,14 +97,14 @@
     </div>
   </div>
 
-  <!-- Auto Create Source on OBS -->
+  <!-- Add New Source to OBS -->
   <wa-dialog id="createSourceModal" class="obs-feature-dialog" light-dismiss>
     <div slot="label" class="obs-modal-header">
       <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" class="obs-modal-icon" alt="OBS logo">
-      <span class="obs-modal-title">Auto Create Source on OBS</span>
+      <span class="obs-modal-title">Add New Source to OBS</span>
     </div>
 
-    <p class="modal-note">Adds a browser source with the URL your settings have built so far. Pick an existing scene or type a new name.</p>
+    <p class="modal-note">Creates a new browser source with the settings that have been configured. Pick an existing scene or type a new name to create a new scene.</p>
 
     <div id="createSourceWarning" class="obs-modal-warning hidden">Connect to OBS first.</div>
 
@@ -141,24 +141,24 @@
 
     <div class="obs-form-group">
       <label class="obs-field-label" for="createSourceName">Source Name</label>
-      <input id="createSourceName" class="obs-native-input" type="text" autocomplete="off" placeholder="e.g. ChatRD">
+      <input id="createSourceName" class="obs-native-input" type="text" autocomplete="off" placeholder="Type the source name here">
     </div>
 
     <div class="obs-form-grid">
       <div class="obs-form-group">
         <label class="obs-field-label" for="createSourceWidth">Width</label>
-        <input id="createSourceWidth" class="obs-native-input" type="number" inputmode="numeric" min="1" step="10" value="480">
+        <input id="createSourceWidth" class="obs-native-input" type="number" inputmode="numeric" min="1" step="10" value="800">
       </div>
       <div class="obs-form-group">
         <label class="obs-field-label" for="createSourceHeight">Height</label>
-        <input id="createSourceHeight" class="obs-native-input" type="number" inputmode="numeric" min="1" step="10" value="900">
+        <input id="createSourceHeight" class="obs-native-input" type="number" inputmode="numeric" min="1" step="10" value="600">
       </div>
     </div>
 
     <p id="createSourceError" class="modal-error hidden"></p>
 
     <div slot="footer" class="obs-modal-footer">
-      <span class="obs-modal-footer-note">The source is created in OBS and linked to this form.</span>
+      <span class="obs-modal-footer-note">The source is created in OBS and linked to this form</span>
       <button id="cancelCreateSourceButton" type="button" class="utility-button obs-modal-footer-button">Cancel</button>
       <button id="confirmCreateSourceButton" type="button" class="primary-button obs-modal-footer-button">Create &amp; Load</button>
     </div>
@@ -179,7 +179,7 @@
       <div id="obsSourceList" class="obs-source-list">
         <!-- Rows injected from GetInputList + GetInputSettings -->
       </div>
-      <div id="obsSourcesEmpty" class="obs-source-empty hidden">No browser sources using this widget were found.</div>
+      <div id="obsSourcesEmpty" class="obs-source-empty hidden">No browser sources using this widget were found</div>
 
       <div class="obs-source-footer-row">
         <img src="https://api.iconify.design/mdi:refresh.svg?color=%238b8b8b" alt="" class="obs-source-rescan-icon">
@@ -190,13 +190,13 @@
     </div>
 
     <div slot="footer" class="obs-modal-footer">
-      <span class="obs-modal-footer-note">Loading replaces unsaved changes in the form.</span>
+      <span class="obs-modal-footer-note">Loading replaces unsaved changes in the form</span>
       <button id="confirmLoadSourceButton" type="button" class="primary-button obs-modal-footer-button" disabled>Load &amp; Link</button>
     </div>
   </wa-dialog>
 
   <wa-dialog id="loadSettingsModal" label="Load Settings" light-dismiss>
-    <p class="modal-note">Paste your widget URL with parameters to populate the form fields.</p>
+    <p class="modal-note">Paste your widget URL with parameters to populate the form fields</p>
 
     <wa-textarea
       id="loadSettingsUrlInput"

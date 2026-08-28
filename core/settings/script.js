@@ -117,6 +117,8 @@
   const OBS_STORAGE_KEYS = { port: 'obs_ws_port', password: 'obs_ws_password' };
   const OBS_DEFAULT_PORT = '4455';
   const OBS_RETRY_INTERVAL_MS = 5000;
+  // Fallbacks when the widget doesn't declare page.sourceWidth / page.sourceHeight.
+  const OBS_DEFAULT_SOURCE_SIZE = { width: 800, height: 600 };
 
   let obs = null;
   let obsConnected = false;
@@ -960,11 +962,23 @@
     dom.createSourceWarning.classList.toggle('hidden', obsConnected);
     closeSceneMenu(); // a dismissed dialog can leave the menu flagged open
 
-    // Sensible default: the widget's own title as the source name.
-    dom.createSourceName.value = state.page.widgetTitle || 'Widget';
+    // Scene and source names always start blank so a previous run's values
+    // never get reused by accident.
+    dom.createSceneInput.value = '';
+    dom.createSourceName.value = '';
+
+    // The widget can declare its natural canvas size; otherwise 800x600.
+    dom.createSourceWidth.value = sourceSizeDefault('sourceWidth', OBS_DEFAULT_SOURCE_SIZE.width);
+    dom.createSourceHeight.value = sourceSizeDefault('sourceHeight', OBS_DEFAULT_SOURCE_SIZE.height);
 
     dom.createSourceModal.open = true;
     await loadSceneSuggestions();
+  }
+
+  // Reads a positive integer size from the widget's boot page config.
+  function sourceSizeDefault(key, fallback) {
+    const value = Number(state.page[key]);
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : fallback;
   }
 
   /* ------------------------------------------------------- scene combobox */
@@ -1077,11 +1091,7 @@
       obsScenes = [];
     }
 
-    // Default to the current program scene when OBS tells us, else the first.
-    if (!dom.createSceneInput.value) {
-      dom.createSceneInput.value = obsScenes[0] || '';
-    }
-
+    // The input stays blank on purpose; the scene list is only a suggestion.
     sceneComboIndex = -1;
     renderSceneOptions();
   }
