@@ -387,7 +387,7 @@
       dom.actions.appendChild(row);
     }
 
-    const copyLabel = state.page.copyButtonLabel || 'Copy Link URL';
+    const copyLabel = state.page.copyButtonLabel || 'Copy Current Settings Link URL';
     dom.applyButton.setAttribute('data-tooltip', copyLabel);
     dom.applyButton.setAttribute('aria-label', copyLabel);
   }
@@ -1116,7 +1116,7 @@
 
       const icon = document.createElement('img');
       icon.className = 'scene-combo-option-icon';
-      icon.src = 'https://api.iconify.design/mdi:movie-open-outline.svg?color=%237fa6e6';
+      icon.src = 'https://api.iconify.design/material-symbols-light:stacks.svg?color=%237fa6e6';
       icon.alt = '';
 
       const name = document.createElement('span');
