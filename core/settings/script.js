@@ -1,17 +1,22 @@
 (function () {
   const query = new URLSearchParams(window.location.search);
-  // srcdoc-loaded documents (used when this page is fetched from a CDN
-  // rather than navigated to directly) have no query string of their own.
-  const sessionKey = query.get('sessionKey') || window.__SETTINGS_SESSION_KEY__;
+  // The boot config arrives one of two ways. `#boot=` carries it inline, which
+  // works regardless of where the embedding widget is hosted; `?sessionKey=`
+  // reads it out of sessionStorage, which only works when the widget page and
+  // this page share an origin.
+  const hashBoot = new URLSearchParams(window.location.hash.slice(1)).get('boot');
+  const sessionKey = query.get('sessionKey');
 
-  if (!sessionKey) {
+  if (!hashBoot && !sessionKey) {
     document.body.innerHTML = '<p style="padding:24px;color:white;font-family:sans-serif;">Missing settings-core session key.</p>';
     return;
   }
 
   let boot;
   try {
-    boot = JSON.parse(sessionStorage.getItem(sessionKey) || 'null');
+    boot = hashBoot
+      ? JSON.parse(hashBoot)
+      : JSON.parse(sessionStorage.getItem(sessionKey) || 'null');
   } catch (error) {
     console.error(error);
   }
