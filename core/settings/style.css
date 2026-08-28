@@ -108,22 +108,6 @@ body.panel-resizing .preview-panel iframe {
   pointer-events: none;
 }
 
-.settings-header {
-  position: relative;
-  z-index: 2;
-
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-
-  width: 100%;
-  padding: 12px 24px;
-
-  background: #141414;
-  box-shadow: 0px 4px 6px rgba(0,0,0,0.5);
-}
-
 .settings-body {
   position: relative;
   z-index: 1;
@@ -148,57 +132,11 @@ body.panel-resizing .preview-panel iframe {
   line-height: 1.2;
 }
 
-/* OBS connect button */
-
 .header-actions {
   margin-left: auto;
   display: flex;
   align-items: center;
   flex-shrink: 0;
-}
-
-.obs-connect-btn {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  margin-top: 0;
-  padding: 0;
-  border-radius: 10px;
-  border: none;
-  background: none;
-  color: #bbb;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.obs-connect-btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.obs-connect-btn:hover::before {
-  transform: translate(-50%, -50%) scale(1);
-  opacity: 1;
-}
-
-.obs-connect-btn:hover {
-  background: none;
-  color: #fff;
 }
 
 .obs-icon {
@@ -636,17 +574,6 @@ button:active {
   background-color: #59606b;
 }
 
-.utility-button-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.utility-button-row button {
-  margin-top: 0;
-}
-
 .utility-button,
 .utility-button-gray,
 button.utility-button,
@@ -768,13 +695,19 @@ button.utility-button-gray:hover {
 /* Modal */
 
 body.modal-open .settings-container {
-  filter: blur(6px);
   pointer-events: none;
   user-select: none;
 }
 
 wa-dialog:not(:defined) {
   visibility: hidden;
+}
+
+/* Dim only - no blur behind any dialog on this page. */
+wa-dialog::part(overlay) {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 wa-dialog::part(dialog) {
@@ -853,11 +786,7 @@ a {
 
 
 /* ==========================================================================
-   OBS integration — full-width header, Auto-create Source & Load, Load from OBS
-   Append this block to the end of core/settings/style.css.
-
-   The old `.settings-header` rules above are now unused (the header moved out
-   of `.settings-panel`); safe to delete them whenever you like.
+   OBS integration v2 — header-driven layout, scene combobox, flash states.
    ========================================================================== */
 
 /* Shell: header on top at 100% width, panels below it ---------------------- */
@@ -909,7 +838,7 @@ a {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -919,7 +848,7 @@ a {
   background: #262626;
 }
 
-/* Header buttons */
+/* Header buttons ---------------------------------------------------------- */
 
 .header-button {
   display: flex;
@@ -951,15 +880,23 @@ a {
   filter: brightness(1.1);
 }
 
-.header-button:disabled {
+.header-button:disabled,
+.header-icon-button:disabled {
   opacity: 0.5;
   cursor: default;
+  filter: none;
 }
 
-.header-button-icon {
+.header-button-icon,
+.header-icon {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
+}
+
+.header-icon {
+  width: 19px;
+  height: 19px;
 }
 
 .header-button-badge {
@@ -971,13 +908,146 @@ a {
   font-weight: 700;
 }
 
-/* Linked-source chip */
+/* Icon-only square button (Copy Link URL) */
+
+.header-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #3d3d3d, #292929);
+  cursor: pointer;
+  transition: background 0.25s ease, filter 0.2s ease;
+}
+
+/* `.app-header button { width: auto; }` is one class + one type selector
+   (0,1,1), which outranks a single-class `.header-icon-button { width: 38px }`
+   (0,1,0) regardless of source order — that's what was squashing this button
+   down to its icon's intrinsic width. Two classes (0,2,0) wins instead. */
+.app-header .header-icon-button {
+  width: 38px;
+  height: 38px;
+}
+
+.header-icon-button-primary {
+  background: linear-gradient(180deg, #3b82f6, #1c3faa);
+}
+
+.header-icon-button:hover {
+  filter: brightness(1.1);
+}
+
+/* Ripple icon button (Load Default) --------------------------------------- */
+
+.header-ripple-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  overflow: visible;
+}
+
+/* Same `.app-header button { width: auto }` specificity fight as
+   .header-icon-button above — see that comment. */
+.app-header .header-ripple-button {
+  width: 38px;
+  height: 38px;
+}
+
+.header-ripple-button:hover {
+  background: transparent;
+}
+
+/* The ripple: a translucent disc that scales up from the centre on hover
+   and snaps out on press. */
+.header-ripple-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  transform: scale(0.4);
+  opacity: 0;
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.22s ease;
+  pointer-events: none;
+}
+
+.header-ripple-button:hover::before {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.header-ripple-button:active::before {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.12);
+}
+
+.header-ripple-button img {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.header-ripple-button:hover img {
+  transform: rotate(-12deg);
+}
+
+/* Shared tooltip for any header control carrying data-tooltip — one style
+   for Load Default, Copy Link URL, and anything else that needs a label
+   without a visible one, instead of leaving some on the native title="". */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #000;
+  border: 1px solid #2f2f2f;
+  color: #e6e6e6;
+  font-size: 0.74rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 30;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Linked-source chip + Save to Source ------------------------------------- */
+
+.linked-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
 .linked-chip {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 10px;
+  height: 30px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(59, 130, 246, 0.14);
   border: 1px solid rgba(59, 130, 246, 0.35);
@@ -1001,6 +1071,9 @@ a {
   font-weight: 600;
 }
 
+/* Bare <button> elements pick up a fixed height from WA's native.css reset
+   that beats padding/line-height alone (it's a real `height`, not something
+   padding can compensate for) — pin it explicitly or it grows past the chip. */
 .app-header .linked-chip-unlink {
   display: inline-flex;
   align-items: center;
@@ -1023,7 +1096,33 @@ a {
   color: #fff;
 }
 
-/* OBS status pill (replaces the old 34px icon-only .obs-connect-btn) */
+.save-to-source-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.18);
+  color: #cfe0ff;
+  font-weight: 600;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.save-to-source-button:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.save-to-source-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* OBS status pill --------------------------------------------------------- */
 
 .obs-status-pill {
   display: flex;
@@ -1061,36 +1160,188 @@ a {
   height: 7px;
 }
 
-/* Primary button row (Copy Link URL, + Save to Source when linked) */
+/* Green success flash (used by flashButton) ------------------------------- */
 
-.primary-button-row {
-  display: grid;
-  grid-template-columns: 1fr;
+/* The header/primary buttons paint with `background: linear-gradient(...)`,
+   which is a background-IMAGE — setting style.backgroundColor alone is
+   invisible underneath it. This class kills the gradient and forces the
+   colour, and !important beats the inline gradient on .primary-button. */
+.is-flashing {
+  background-image: none !important;
+  filter: none !important;
+  transition: background-color 0.2s ease;
+}
+
+.is-flashing.flash-success {
+  background-color: #2f9e51 !important;
+  border-color: #2f9e51 !important;
+  color: #fff !important;
+}
+
+.is-flashing.flash-error {
+  background-color: #d9534f !important;
+  border-color: #d9534f !important;
+  color: #fff !important;
+}
+
+/* Scene combobox --------------------------------------------------------- */
+
+.obs-field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.scene-combo {
+  position: relative;
+}
+
+.scene-combo-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: text;
+  transition: border-color 0.15s ease;
+}
+
+.scene-combo.is-open .scene-combo-control,
+.scene-combo-control:focus-within {
+  border-color: rgba(59, 130, 246, 0.55);
+}
+
+.scene-combo-input {
+  flex: 1;
+  min-width: 0;
+  /* WA's native.css reset gives raw <input> elements their own ~14px
+     horizontal padding by default, which stacked with the control's own
+     12px and pushed the text in ~26px total. */
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.scene-combo-input::placeholder {
+  color: #5c5c5c;
+}
+
+.scene-combo-chevron {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  transition: transform 0.18s ease;
+}
+
+.scene-combo.is-open .scene-combo-chevron {
+  transform: rotate(180deg);
+}
+
+.scene-combo-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+
+  background: #161616;
+  border: 1px solid #2f2f2f;
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.scene-combo-options {
+  max-height: 208px;
+  overflow-y: auto;
+}
+
+.scene-combo-option {
+  display: flex;
+  align-items: center;
   gap: 10px;
-  margin-top: 15px;
+  padding: 9px 12px;
+  font-size: 0.88rem;
+  cursor: pointer;
 }
 
-.primary-button-row.is-linked {
-  grid-template-columns: 1fr 1fr;
+.scene-combo-option:hover,
+.scene-combo-option.is-active {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.primary-button-row button {
-  margin-top: 0;
+.scene-combo-option.is-current {
+  background: rgba(59, 130, 246, 0.10);
 }
 
-/* Feature dialogs */
+.scene-combo-option-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.scene-combo-option-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-combo-option-tag {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #7fa6e6;
+}
+
+.scene-combo-empty {
+  padding: 9px 12px;
+  font-size: 0.84rem;
+  color: #8b8b8b;
+}
+
+.scene-combo-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid #232323;
+  font-size: 0.82rem;
+  color: #8b8b8b;
+}
+
+.scene-combo-hint-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.scene-combo-options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scene-combo-options::-webkit-scrollbar-thumb {
+  background-color: #37393d;
+  border-radius: 3px;
+}
+
+/* Feature dialogs -------------------------------------------------------- */
 
 .obs-feature-dialog::part(dialog) {
   width: min(560px, 100%);
 }
 
-/* Single source of truth for every control's height in these two dialogs.
-   Percentage/stretch sizing on WA's stepper buttons doesn't work against an
-   auto-height box (see the stepper rule below for why), so instead every
-   control locks to this one fixed value — change it here to resize them all
-   at once. */
-.obs-feature-dialog {
-  --obs-control-height: 44px;
+/* The combobox menu must escape the dialog body's scroll box. */
+.obs-feature-dialog::part(body) {
+  overflow: visible;
 }
 
 .obs-form-grid {
@@ -1099,133 +1350,49 @@ a {
   gap: 12px;
 }
 
-/* Grid items default to min-width:auto, so they refuse to shrink below the
-   number input's intrinsic content width (padding + both steppers) — that
-   was blowing the row past the dialog and forcing a horizontal scrollbar. */
+/* Grid items default to min-width:auto, which can refuse to shrink below an
+   input's content width and blow the row past the dialog edge. */
 .obs-form-grid > .obs-form-group {
   min-width: 0;
 }
 
-/* Belt-and-suspenders: if the row ever does need to scroll horizontally
-   (e.g. a much narrower dialog), theme it like the vertical scrollbars
-   instead of leaving it to the OS default. */
-.obs-form-grid {
-  overflow-x: auto;
-}
-
-.obs-form-grid::-webkit-scrollbar {
-  height: 6px;
-}
-
-.obs-form-grid::-webkit-scrollbar-track {
-  background: #181818;
-}
-
-.obs-form-grid::-webkit-scrollbar-thumb {
-  background-color: #37393d;
-  border-radius: 3px;
-}
-
-.obs-form-grid::-webkit-scrollbar-thumb:hover {
-  background-color: #4b4d52;
-}
-
-.obs-form-group wa-select,
-.obs-form-group wa-number-input {
+/* Source Name / Width / Height: plain native inputs, not WA components — WA
+   was fighting us on padding and stepper sizing here. Same visual box as
+   .scene-combo-control, and the same subtle border-only focus style instead
+   of WA's thicker focus ring (box-shadow) used elsewhere in these dialogs. */
+.obs-native-input {
   display: block;
   width: 100%;
-}
-
-.obs-form-group wa-select::part(form-control-label),
-.obs-form-group wa-number-input::part(form-control-label) {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 8px;
-}
-
-.obs-form-group wa-select::part(combobox),
-.obs-form-group wa-number-input::part(base) {
-  background-color: #101010;
+  height: 40px;
+  padding: 0 12px;
+  background: #101010;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  height: var(--obs-control-height);
-  min-height: var(--obs-control-height);
-}
-
-.obs-form-group wa-select::part(combobox) {
-  padding: 0 10px;
-}
-
-.obs-form-group wa-select::part(display-input),
-.obs-form-group wa-number-input::part(input) {
   color: #fff;
   font-size: 0.9rem;
-  padding: 0 10px;
-  height: 100%;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
 }
 
-.obs-form-group wa-select::part(display-input) {
-  padding: 0;
+.obs-native-input::placeholder {
+  color: #5c5c5c;
 }
 
-/* WA auto-sizes the open listbox to fill available viewport space via an
-   internal --auto-size-available-height var, which is what made it stretch
-   almost to the bottom of the screen. Cap it explicitly instead — raise or
-   lower this max-height to taste. */
-.obs-form-group wa-select::part(listbox) {
-  max-height: 240px;
+.obs-native-input:focus {
+  border-color: rgba(59, 130, 246, 0.55);
 }
 
-.obs-form-group wa-select::part(listbox)::-webkit-scrollbar {
-  width: 6px;
+/* No steppers, per request — hide the native number-input spin buttons. */
+.obs-native-input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
 }
 
-.obs-form-group wa-select::part(listbox)::-webkit-scrollbar-track {
-  background: #181818;
-}
-
-.obs-form-group wa-select::part(listbox)::-webkit-scrollbar-thumb {
-  background-color: #37393d;
-  border-radius: 3px;
-}
-
-.obs-form-group wa-select::part(listbox)::-webkit-scrollbar-thumb:hover {
-  background-color: #4b4d52;
-}
-
-/* "+ New scene…" is a normal light-DOM child slotted into the listbox above,
-   so it can stick to the bottom of that scroll container like any other
-   element — no shadow-part trickery needed. */
-#createSceneSelect wa-option[value='__new__'] {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  background-color: var(--field-bg);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* WA gives the steppers a fixed pixel height of their own, which beats
-   align-self:stretch outright — stretch only computes a used size when the
-   cross-size property is auto, and percentages don't count (a percentage
-   against an auto-height parent just resolves back to auto, it doesn't
-   trigger stretch). Locking both this and part(base) above to the same
-   --obs-control-height var is what actually keeps them in sync. */
-.obs-form-group wa-number-input::part(stepper-increment),
-.obs-form-group wa-number-input::part(stepper-decrement) {
-  flex: 0 0 auto;
-  width: 32px;
-  height: var(--obs-control-height);
+.obs-native-input[type='number']::-webkit-outer-spin-button,
+.obs-native-input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
   margin: 0;
-  background: transparent;
-  border: none;
-  color: #bbb;
-}
-
-.obs-form-group wa-number-input::part(stepper-increment):hover,
-.obs-form-group wa-number-input::part(stepper-decrement):hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
 }
 
 .obs-modal-footer {
@@ -1249,7 +1416,7 @@ a {
   font-size: 0.9rem;
 }
 
-/* Source list */
+/* Source list ------------------------------------------------------------ */
 
 .obs-source-list-wrap {
   border: 1px solid #2a2a2a;
@@ -1346,30 +1513,51 @@ a {
   color: #8b8b8b;
 }
 
-.obs-source-rescan {
+/* Footer row: Rescan OBS · or paste a URL manually */
+
+.obs-source-footer-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
-  margin-top: 0;
   padding: 10px 14px;
+  font-size: 0.78rem;
+  color: #8b8b8b;
+}
+
+.obs-source-footer-sep {
+  color: #5c5c5c;
+}
+
+.obs-source-link {
+  width: auto;
+  margin-top: 0;
+  padding: 0;
   border: none;
-  border-radius: 0;
-  background: transparent;
+  background: none;
   color: #8b8b8b;
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
 }
 
-.obs-source-rescan:hover {
-  background: rgba(255, 255, 255, 0.04);
+.obs-source-link:hover {
+  background: none;
   color: #fff;
+  text-decoration: underline;
+}
+
+.obs-source-link-accent {
+  color: #9fbdf2;
+}
+
+.obs-source-link-accent:hover {
+  color: #cfe0ff;
 }
 
 .obs-source-rescan-icon {
   width: 14px;
   height: 14px;
+  flex: 0 0 auto;
 }
 
 .obs-source-list::-webkit-scrollbar {
@@ -1381,9 +1569,9 @@ a {
   border-radius: 3px;
 }
 
-/* Blur the shell (not just .settings-container) while a dialog is open. */
+/* Freeze the shell (not just .settings-container) while a dialog is open.
+   The dimming comes from the dialog overlay; no blur. */
 body.modal-open .app-shell {
-  filter: blur(6px);
   pointer-events: none;
   user-select: none;
 }

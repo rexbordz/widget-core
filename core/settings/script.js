@@ -59,6 +59,7 @@
     form: document.getElementById('settingsForm'),
     actions: document.getElementById('actionArea'),
     applyButton: document.getElementById('applySettings'),
+    applyButtonIcon: document.getElementById('applySettingsIcon'),
     loadDefaultsButton: document.getElementById('loadDefaultsButton'),
     openLoadSettingsModalButton: document.getElementById('openLoadSettingsModalButton'),
     previewFrame: document.getElementById('previewFrame'),
@@ -80,22 +81,24 @@
     obsPassword: document.getElementById('obsPassword'),
     obsConnectSubmit: document.getElementById('obsConnectSubmit'),
     // --- new header ---
-    linkedSourceChip: document.getElementById('linkedSourceChip'),
+    linkedSourceGroup: document.getElementById('linkedSourceGroup'),
     linkedSourceName: document.getElementById('linkedSourceName'),
     unlinkSourceButton: document.getElementById('unlinkSourceButton'),
     createSourceButton: document.getElementById('createSourceButton'),
     loadFromObsButton: document.getElementById('loadFromObsButton'),
     obsSourceCount: document.getElementById('obsSourceCount'),
     obsStatusLabel: document.getElementById('obsStatusLabel'),
-    // --- primary row ---
-    primaryButtonRow: document.getElementById('primaryButtonRow'),
     saveToSourceButton: document.getElementById('saveToSourceButton'),
     // --- create-source modal ---
     createSourceModal: document.getElementById('createSourceModal'),
     createSourceWarning: document.getElementById('createSourceWarning'),
-    createSceneSelect: document.getElementById('createSceneSelect'),
-    createSceneNewGroup: document.getElementById('createSceneNewGroup'),
-    createSceneNewName: document.getElementById('createSceneNewName'),
+    // scene combobox
+    createSceneCombo: document.getElementById('createSceneCombo'),
+    createSceneInput: document.getElementById('createSceneInput'),
+    createSceneMenu: document.getElementById('createSceneMenu'),
+    createSceneOptions: document.getElementById('createSceneOptions'),
+    createSceneEmpty: document.getElementById('createSceneEmpty'),
+    createSceneHint: document.getElementById('createSceneHint'),
     createSourceName: document.getElementById('createSourceName'),
     createSourceWidth: document.getElementById('createSourceWidth'),
     createSourceHeight: document.getElementById('createSourceHeight'),
@@ -125,6 +128,9 @@
   let obsWidgetSources = [];
   let selectedObsSourceIndex = -1;
   let linkedSource = null; // the source this form is currently bound to
+
+  let obsScenes = [];          // scene names from the last GetSceneList
+  let sceneComboIndex = -1;    // keyboard highlight in the combobox
 
   init().catch((error) => {
     console.error(error);
@@ -379,7 +385,9 @@
       dom.actions.appendChild(row);
     }
 
-    dom.applyButton.textContent = state.page.copyButtonLabel || 'Copy Link URL';
+    const copyLabel = state.page.copyButtonLabel || 'Copy Link URL';
+    dom.applyButton.setAttribute('data-tooltip', copyLabel);
+    dom.applyButton.setAttribute('aria-label', copyLabel);
   }
 
   function renderFooter() {
@@ -430,7 +438,11 @@
 
     dom.applyButton.addEventListener('click', copyWidgetUrl);
     dom.loadDefaultsButton.addEventListener('click', loadDefaults);
-    dom.openLoadSettingsModalButton.addEventListener('click', openLoadSettingsModal);
+    dom.openLoadSettingsModalButton.addEventListener('click', () => {
+      // Hand off from the OBS list to the manual paste flow.
+      if (dom.obsSourcesModal) dom.obsSourcesModal.open = false;
+      openLoadSettingsModal();
+    });
     dom.confirmLoadSettingsButton.addEventListener('click', handleLoadSettingsConfirm);
 
     dom.modal.addEventListener('wa-show', () => {
@@ -622,7 +634,7 @@
 
   if (!silent) {
     updatePreview();
-    flashButton(dom.loadDefaultsButton, 'Defaults loaded', '#4CAF50', 2500);
+    flashButton(dom.applyButton, 'Defaults loaded', '#4CAF50', 2000);
   }
 }
 
@@ -658,7 +670,7 @@
 
       closeLoadSettingsModal();
       updatePreview();
-      flashButton(dom.openLoadSettingsModalButton, 'Settings loaded', '#4CAF50', 2500);
+      flashButton(dom.loadFromObsButton, 'Settings loaded', '#4CAF50', 2500);
 
     } catch (error) {
       console.error(error);
@@ -713,23 +725,53 @@
     dom.modalError.classList.remove('hidden');
   }
 
-  function flashButton(button, text, bg, delay) {
+  function flashButton(button, text, bg, delay = 2500) {
     if (!button) return;
 
-    // innerHTML, not textContent: the header buttons wrap an icon <img> and a
-    // count badge, and restoring text alone would drop them permanently.
-    const originalHtml = button.innerHTML;
-    const originalBg = button.style.backgroundColor;
-    const wasDisabled = button.disabled;
+    // One timer per button, so a double click can't restore stale content.
+    clearTimeout(button._flashTimer);
 
-    button.disabled = true;
-    button.style.backgroundColor = bg;
-    button.textContent = text;
+    if (!button._flashOriginalHtml) {
+      // innerHTML, not textContent: the header buttons wrap an icon <img> and
+      // a count badge, and restoring text alone would drop them permanently.
+      button._flashOriginalHtml = button.innerHTML;
+    }
 
-    setTimeout(() => {
-      button.style.backgroundColor = originalBg;
-      button.innerHTML = originalHtml;
-      button.disabled = wasDisabled;
+    const isError = typeof bg === 'string' && /d9534f|f44336|e53|red/i.test(bg);
+    button.classList.add('is-flashing', isError ? 'flash-error' : 'flash-success');
+
+    // Icon-only buttons keep their shape: swap the glyph, never inject text.
+    if (button.classList.contains('header-icon-button')) {
+      const icon = button.querySelector('img');
+      if (icon) {
+        if (!icon._flashOriginalSrc) icon._flashOriginalSrc = icon.src;
+        icon.src = isError
+          ? 'https://api.iconify.design/mdi:close-thick.svg?color=%23ffffff'
+          : 'https://api.iconify.design/mdi:check-bold.svg?color=%23ffffff';
+      }
+      // data-tooltip drives the shared CSS tooltip (see [data-tooltip] in
+      // style.css) — same mechanism as Load Default, not the native title.
+      if (button._flashOriginalTooltip === undefined) {
+        button._flashOriginalTooltip = button.getAttribute('data-tooltip');
+      }
+      button.setAttribute('data-tooltip', text);
+    } else {
+      button.textContent = text;
+    }
+
+    button._flashTimer = setTimeout(() => {
+      button.classList.remove('is-flashing', 'flash-success', 'flash-error');
+
+      if (button.classList.contains('header-icon-button')) {
+        const icon = button.querySelector('img');
+        if (icon && icon._flashOriginalSrc) icon.src = icon._flashOriginalSrc;
+        button.setAttribute('data-tooltip', button._flashOriginalTooltip);
+        button._flashOriginalTooltip = undefined;
+      } else {
+        button.innerHTML = button._flashOriginalHtml;
+      }
+
+      button._flashOriginalHtml = null;
     }, delay);
   }
 
@@ -881,8 +923,7 @@
     dom.cancelCreateSourceButton?.addEventListener('click', () => { dom.createSourceModal.open = false; });
     dom.confirmCreateSourceButton?.addEventListener('click', handleCreateSourceConfirm);
 
-    dom.createSceneSelect?.addEventListener('change', onSceneSelectChange);
-    dom.createSceneSelect?.addEventListener('wa-change', onSceneSelectChange);
+    initSceneCombo();
 
     dom.loadFromObsButton?.addEventListener('click', openObsSourcesModal);
     dom.rescanObsSourcesButton?.addEventListener('click', () => refreshObsWidgetSources({ render: true }));
@@ -899,21 +940,13 @@
     setLinkedSource(null);
   }
 
-  function onSceneSelectChange() {
-    const isNew = dom.createSceneSelect.value === '__new__';
-    dom.createSceneNewGroup.classList.toggle('hidden', !isNew);
-    if (isNew) setTimeout(() => dom.createSceneNewName.focus(), 0);
-  }
-
   /* --------------------------------------------------------- linked source */
 
   function setLinkedSource(source) {
     linkedSource = source;
     const isLinked = Boolean(source);
 
-    dom.linkedSourceChip?.classList.toggle('hidden', !isLinked);
-    dom.saveToSourceButton?.classList.toggle('hidden', !isLinked);
-    dom.primaryButtonRow?.classList.toggle('is-linked', isLinked);
+    dom.linkedSourceGroup?.classList.toggle('hidden', !isLinked);
 
     if (isLinked && dom.linkedSourceName) {
       dom.linkedSourceName.textContent = source.inputName;
@@ -925,62 +958,198 @@
   async function openCreateSourceModal() {
     dom.createSourceError.classList.add('hidden');
     dom.createSourceWarning.classList.toggle('hidden', obsConnected);
-    dom.createSceneNewGroup.classList.add('hidden');
+    closeSceneMenu(); // a dismissed dialog can leave the menu flagged open
 
     // Sensible default: the widget's own title as the source name.
     dom.createSourceName.value = state.page.widgetTitle || 'Widget';
 
     dom.createSourceModal.open = true;
-    await populateSceneOptions();
+    await loadSceneSuggestions();
   }
 
-  async function populateSceneOptions() {
-    const select = dom.createSceneSelect;
-    if (!select) return;
+  /* ------------------------------------------------------- scene combobox */
 
-    let scenes = [];
-    try {
-      scenes = await fetchObsScenes();
-    } catch (error) {
-      console.warn('Could not read OBS scenes:', error?.message || error);
-    }
+  function initSceneCombo() {
+    const input = dom.createSceneInput;
+    if (!input) return;
 
-    // wa-select only has a working .value once it is upgraded and rendered,
-    // so wait for the upgrade before touching options or the value.
-    await customElements.whenDefined('wa-select');
-    await select.updateComplete;
-
-    select.innerHTML = '';
-
-    const label = document.createElement('span');
-    label.slot = 'label';
-    label.textContent = 'Scene Name';
-    select.appendChild(label);
-
-    scenes.forEach((sceneName) => {
-      const option = document.createElement('wa-option');
-      option.setAttribute('value', sceneName);
-      option.textContent = sceneName;
-      select.appendChild(option);
+    input.addEventListener('input', () => {
+      sceneComboIndex = -1;
+      openSceneMenu();
+      renderSceneOptions();
     });
 
-    const newOption = document.createElement('wa-option');
-    newOption.setAttribute('value', '__new__');
-    newOption.textContent = '+ New scene…';
-    select.appendChild(newOption);
+    input.addEventListener('focus', () => {
+      openSceneMenu();
+      renderSceneOptions();
+    });
 
-    await customElements.whenDefined('wa-option');
-    await select.updateComplete;
+    // Clicking anywhere on the control focuses the input (it looks like one
+    // field, so the whole thing should behave like one) and toggles the menu.
+    // The open state is sampled on mousedown because focus (which opens the
+    // menu) lands between mousedown and click.
+    const control = dom.createSceneCombo.querySelector('.scene-combo-control');
+    let openBeforePress = false;
+    control?.addEventListener('mousedown', () => {
+      openBeforePress = isSceneMenuOpen();
+    });
+    control?.addEventListener('click', () => {
+      input.focus();
+      if (openBeforePress) {
+        closeSceneMenu();
+      } else {
+        openSceneMenu();
+        renderSceneOptions();
+      }
+    });
 
-    select.value = scenes[0] || '__new__';
-    onSceneSelectChange();
+    input.addEventListener('keydown', (event) => {
+      const options = visibleSceneOptions();
+
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (!options.length) return;
+        openSceneMenu();
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        sceneComboIndex = (sceneComboIndex + step + options.length) % options.length;
+        renderSceneOptions();
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        // Enter picks the highlighted suggestion; with nothing highlighted the
+        // typed text stands as-is (that's how you name a new scene).
+        if (sceneComboIndex >= 0 && options[sceneComboIndex]) {
+          event.preventDefault();
+          chooseScene(options[sceneComboIndex]);
+        } else {
+          closeSceneMenu();
+        }
+        return;
+      }
+
+      if (event.key === 'Escape' && isSceneMenuOpen()) {
+        event.stopPropagation(); // don't let the dialog close too
+        closeSceneMenu();
+      }
+    });
+
+    // Click-away closes the menu.
+    document.addEventListener('click', (event) => {
+      if (!isSceneMenuOpen()) return;
+      if (!dom.createSceneCombo.contains(event.target)) closeSceneMenu();
+    });
+  }
+
+  function isSceneMenuOpen() {
+    return dom.createSceneCombo?.classList.contains('is-open');
+  }
+
+  function openSceneMenu() {
+    dom.createSceneCombo.classList.add('is-open');
+    dom.createSceneMenu.classList.remove('hidden');
+    dom.createSceneInput.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSceneMenu() {
+    dom.createSceneCombo.classList.remove('is-open');
+    dom.createSceneMenu.classList.add('hidden');
+    dom.createSceneInput.setAttribute('aria-expanded', 'false');
+    sceneComboIndex = -1;
+  }
+
+  function chooseScene(sceneName) {
+    dom.createSceneInput.value = sceneName;
+    closeSceneMenu();
+  }
+
+  function visibleSceneOptions() {
+    const query = dom.createSceneInput.value.trim().toLowerCase();
+    if (!query) return obsScenes;
+    return obsScenes.filter((name) => name.toLowerCase().includes(query));
+  }
+
+  async function loadSceneSuggestions() {
+    try {
+      obsScenes = await fetchObsScenes();
+    } catch (error) {
+      console.warn('Could not read OBS scenes:', error?.message || error);
+      obsScenes = [];
+    }
+
+    // Default to the current program scene when OBS tells us, else the first.
+    if (!dom.createSceneInput.value) {
+      dom.createSceneInput.value = obsScenes[0] || '';
+    }
+
+    sceneComboIndex = -1;
+    renderSceneOptions();
+  }
+
+  function renderSceneOptions() {
+    const list = dom.createSceneOptions;
+    if (!list) return;
+
+    const query = dom.createSceneInput.value.trim();
+    const lower = query.toLowerCase();
+    const options = visibleSceneOptions();
+    const exactMatch = obsScenes.some((name) => name.toLowerCase() === lower);
+
+    list.innerHTML = '';
+
+    options.forEach((sceneName, index) => {
+      const option = document.createElement('div');
+      option.className = 'scene-combo-option';
+      option.setAttribute('role', 'option');
+      if (index === sceneComboIndex) option.classList.add('is-active');
+      if (sceneName.toLowerCase() === lower) option.classList.add('is-current');
+
+      const icon = document.createElement('img');
+      icon.className = 'scene-combo-option-icon';
+      icon.src = 'https://api.iconify.design/mdi:movie-open-outline.svg?color=%237fa6e6';
+      icon.alt = '';
+
+      const name = document.createElement('span');
+      name.className = 'scene-combo-option-name';
+      name.textContent = sceneName;
+
+      option.append(icon, name);
+
+      if (sceneName.toLowerCase() === lower) {
+        const tag = document.createElement('span');
+        tag.className = 'scene-combo-option-tag';
+        tag.textContent = 'current';
+        option.appendChild(tag);
+      }
+
+      // mousedown, not click: the input's blur would otherwise fire first.
+      option.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        chooseScene(sceneName);
+      });
+
+      list.appendChild(option);
+    });
+
+    const noMatches = options.length === 0;
+    dom.createSceneEmpty.classList.toggle('hidden', !noMatches);
+    if (noMatches) {
+      dom.createSceneEmpty.textContent = query
+        ? `No scene matches “${query}”.`
+        : 'No scenes found in OBS.';
+    }
+
+    dom.createSceneHint.textContent = query && !exactMatch
+      ? `Press Enter to add a new scene named “${query}”`
+      : 'Keep typing to create a new scene';
   }
 
   async function handleCreateSourceConfirm() {
-    const usingNewScene = dom.createSceneSelect.value === '__new__';
-    const sceneName = usingNewScene
-      ? dom.createSceneNewName.value.trim()
-      : dom.createSceneSelect.value;
+    const sceneName = dom.createSceneInput.value.trim();
+    // Anything that isn't an existing scene name is a new scene.
+    const usingNewScene = !obsScenes.some(
+      (name) => name.toLowerCase() === sceneName.toLowerCase()
+    );
     const inputName = dom.createSourceName.value.trim();
     const width = Number(dom.createSourceWidth.value);
     const height = Number(dom.createSourceHeight.value);
@@ -1000,6 +1169,7 @@
     try {
       await createObsBrowserSource({ sceneName, inputName, url, width, height, createScene: usingNewScene });
 
+      closeSceneMenu();
       dom.createSourceModal.open = false;
       setLinkedSource({ inputName, sceneName, url, width, height });
       await refreshObsWidgetSources();

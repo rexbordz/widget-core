@@ -34,22 +34,40 @@
       <h1 id="widgetTitle" class="widget-title">Widget Settings</h1>
 
       <!-- Shown once the form is bound to a browser source (created or loaded) -->
-      <div id="linkedSourceChip" class="linked-chip hidden">
-        <span class="linked-chip-dot"></span>
-        <span class="linked-chip-text">Linked to <b id="linkedSourceName"></b></span>
-        <button id="unlinkSourceButton" class="linked-chip-unlink" type="button" title="Unlink">&times;</button>
+      <div id="linkedSourceGroup" class="linked-group hidden">
+        <div class="linked-chip">
+          <span class="linked-chip-dot"></span>
+          <span class="linked-chip-text">Linked to <b id="linkedSourceName"></b></span>
+          <button id="unlinkSourceButton" class="linked-chip-unlink" type="button" title="Unlink">&times;</button>
+        </div>
+        <button id="saveToSourceButton" class="save-to-source-button" type="button">
+          <img src="https://api.iconify.design/mdi:content-save-outline.svg?color=%23cfe0ff" alt="" class="save-to-source-icon">
+          Save to Source
+        </button>
       </div>
 
       <div class="header-actions">
+        <!-- Copy Link URL: icon-only, flashes to a green checkmark on success.
+             Keeps the #applySettings id so existing wiring still applies. -->
+        <!-- data-tooltip/aria-label are set from config in renderActions() -->
+        <button id="applySettings" class="header-icon-button header-icon-button-primary" type="button" aria-label="Copy Link URL">
+          <img id="applySettingsIcon" src="https://api.iconify.design/mdi:clipboard-text-multiple-outline.svg?color=%23ffffff" alt="" class="header-icon">
+        </button>
+
         <button id="createSourceButton" class="header-button header-button-primary" type="button">
           <img src="https://api.iconify.design/mdi:plus.svg?color=%23ffffff" alt="" class="header-button-icon">
-          Auto-create Source &amp; Load
+          Auto Create Source on OBS
         </button>
 
         <button id="loadFromObsButton" class="header-button" type="button">
           <img src="https://api.iconify.design/mdi:import.svg?color=%23ffffff" alt="" class="header-button-icon">
-          Load from OBS
+          Edit Existing Source in OBS
           <span id="obsSourceCount" class="header-button-badge">0</span>
+        </button>
+
+        <!-- Load Default: ripple + CSS tooltip, no visible label -->
+        <button id="loadDefaultsButton" class="header-ripple-button" type="button" aria-label="Load Default" data-tooltip="Load Default">
+          <img src="https://api.iconify.design/icon-park-outline:undo.svg?color=%23d6d6d6" alt="" class="header-icon">
         </button>
 
         <div class="header-divider"></div>
@@ -67,18 +85,6 @@
         <div class="settings-body">
           <div id="settingsForm"></div>
           <div id="actionArea"></div>
-
-          <!-- Two-up when linked to a source, otherwise Copy Link URL spans the row -->
-          <div id="primaryButtonRow" class="primary-button-row">
-            <button id="saveToSourceButton" type="button" class="primary-button hidden">Save to Source</button>
-            <button id="applySettings" type="button" class="primary-button">Copy Link URL</button>
-          </div>
-
-          <div class="utility-button-row">
-            <button id="loadDefaultsButton" type="button" class="utility-button">Load Default</button>
-            <button id="openLoadSettingsModalButton" type="button" class="utility-button utility-button-gray">Load Settings</button>
-          </div>
-
           <div id="settingsFooter" class="settings-footer"></div>
         </div>
       </div>
@@ -91,48 +97,61 @@
     </div>
   </div>
 
-  <!-- Auto-create Source & Load -->
+  <!-- Auto Create Source on OBS -->
   <wa-dialog id="createSourceModal" class="obs-feature-dialog" light-dismiss>
     <div slot="label" class="obs-modal-header">
       <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" class="obs-modal-icon" alt="OBS logo">
-      <span class="obs-modal-title">Auto-create Source &amp; Load</span>
+      <span class="obs-modal-title">Auto Create Source on OBS</span>
     </div>
 
-    <p class="modal-note">Adds a browser source with the URL your settings have built so far. Pick an existing scene or create a new one.</p>
+    <p class="modal-note">Adds a browser source with the URL your settings have built so far. Pick an existing scene or type a new name.</p>
 
     <div id="createSourceWarning" class="obs-modal-warning hidden">Connect to OBS first.</div>
 
+    <!-- Scene Name: native combobox (autocomplete over existing OBS scenes,
+         and any name that doesn't match becomes a new scene). -->
     <div class="obs-form-group">
-      <wa-select id="createSceneSelect" placeholder="Select a scene">
-        <span slot="label">Scene Name</span>
-        <!-- Existing scenes are injected here from GetSceneList -->
-        <wa-option value="__new__">+ New scene&hellip;</wa-option>
-      </wa-select>
+      <label class="obs-field-label" for="createSceneInput">Scene Name</label>
+      <div id="createSceneCombo" class="scene-combo">
+        <div class="scene-combo-control">
+          <input
+            id="createSceneInput"
+            class="scene-combo-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search scenes or type a new name"
+            role="combobox"
+            aria-expanded="false"
+            aria-controls="createSceneMenu"
+          >
+          <img src="https://api.iconify.design/mdi:chevron-down.svg?color=%23bbbbbb" alt="" class="scene-combo-chevron">
+        </div>
+
+        <div id="createSceneMenu" class="scene-combo-menu hidden" role="listbox">
+          <div id="createSceneOptions" class="scene-combo-options"></div>
+          <div id="createSceneEmpty" class="scene-combo-empty hidden"></div>
+          <div class="scene-combo-hint">
+            <img src="https://api.iconify.design/mdi:plus.svg?color=%238b8b8b" alt="" class="scene-combo-hint-icon">
+            <span id="createSceneHint">Keep typing to create a new scene</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Revealed when "+ New scene…" is selected -->
-    <div id="createSceneNewGroup" class="obs-form-group hidden">
-      <wa-input id="createSceneNewName" autocomplete="off" placeholder="e.g. Chat Overlay">
-        <span slot="label">New Scene Name</span>
-      </wa-input>
-    </div>
-
     <div class="obs-form-group">
-      <wa-input id="createSourceName" autocomplete="off" placeholder="e.g. ChatRD">
-        <span slot="label">Source Name</span>
-      </wa-input>
+      <label class="obs-field-label" for="createSourceName">Source Name</label>
+      <input id="createSourceName" class="obs-native-input" type="text" autocomplete="off" placeholder="e.g. ChatRD">
     </div>
 
     <div class="obs-form-grid">
       <div class="obs-form-group">
-        <wa-number-input id="createSourceWidth" min="1" step="10" value="480">
-          <span slot="label">Width</span>
-        </wa-number-input>
+        <label class="obs-field-label" for="createSourceWidth">Width</label>
+        <input id="createSourceWidth" class="obs-native-input" type="number" inputmode="numeric" min="1" step="10" value="480">
       </div>
       <div class="obs-form-group">
-        <wa-number-input id="createSourceHeight" min="1" step="10" value="900">
-          <span slot="label">Height</span>
-        </wa-number-input>
+        <label class="obs-field-label" for="createSourceHeight">Height</label>
+        <input id="createSourceHeight" class="obs-native-input" type="number" inputmode="numeric" min="1" step="10" value="900">
       </div>
     </div>
 
@@ -145,11 +164,11 @@
     </div>
   </wa-dialog>
 
-  <!-- Load from OBS -->
+  <!-- Edit Existing Source in OBS -->
   <wa-dialog id="obsSourcesModal" class="obs-feature-dialog" light-dismiss>
     <div slot="label" class="obs-modal-header">
       <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" class="obs-modal-icon" alt="OBS logo">
-      <span class="obs-modal-title">Load from OBS</span>
+      <span class="obs-modal-title">Edit Existing Source in OBS</span>
     </div>
 
     <p class="modal-note">Browser sources pointing at this widget. Selecting one fills the form with its current URL parameters.</p>
@@ -161,10 +180,13 @@
         <!-- Rows injected from GetInputList + GetInputSettings -->
       </div>
       <div id="obsSourcesEmpty" class="obs-source-empty hidden">No browser sources using this widget were found.</div>
-      <button id="rescanObsSourcesButton" type="button" class="obs-source-rescan">
+
+      <div class="obs-source-footer-row">
         <img src="https://api.iconify.design/mdi:refresh.svg?color=%238b8b8b" alt="" class="obs-source-rescan-icon">
-        Rescan OBS
-      </button>
+        <button id="rescanObsSourcesButton" type="button" class="obs-source-link">Rescan OBS</button>
+        <span class="obs-source-footer-sep">&middot;</span>
+        <button id="openLoadSettingsModalButton" type="button" class="obs-source-link obs-source-link-accent">or paste a URL manually</button>
+      </div>
     </div>
 
     <div slot="footer" class="obs-modal-footer">
