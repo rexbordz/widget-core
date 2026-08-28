@@ -394,7 +394,7 @@
       dom.actions.appendChild(row);
     }
 
-    const copyLabel = state.page.copyButtonLabel || 'Copy Current Settings Link URL';
+    const copyLabel = state.page.copyButtonLabel || 'Copy Current Settings URL';
     dom.applyButton.setAttribute('data-tooltip', copyLabel);
     dom.applyButton.setAttribute('aria-label', copyLabel);
   }
