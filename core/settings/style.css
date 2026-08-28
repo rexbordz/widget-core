@@ -90,7 +90,7 @@ html, body, * {
 
 .panel-resizer {
   flex: 0 0 auto;
-  width: 6px;
+  width: 3px;
   margin-left: -3px;
   height: 100vh;
   cursor: col-resize;
@@ -283,6 +283,7 @@ body.panel-resizing .preview-panel iframe {
   background-color: #101010;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
+  padding: 0 10px;
   min-height: 0;
   height: auto;
 }
@@ -294,8 +295,14 @@ body.panel-resizing .preview-panel iframe {
 
 .obs-form-group wa-input::part(input) {
   color: #fff;
-  padding: 12px 10px;
+  padding: 12px 0px;
   font-size: 0.9rem;
+}
+
+.obs-form-group wa-input::part(start),
+.obs-form-group wa-input::part(end) {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 .obs-modal-button {
