@@ -78,7 +78,37 @@
     obsModalWarning: document.getElementById('obsModalWarning'),
     obsPort: document.getElementById('obsPort'),
     obsPassword: document.getElementById('obsPassword'),
-    obsConnectSubmit: document.getElementById('obsConnectSubmit')
+    obsConnectSubmit: document.getElementById('obsConnectSubmit'),
+    // --- new header ---
+    linkedSourceChip: document.getElementById('linkedSourceChip'),
+    linkedSourceName: document.getElementById('linkedSourceName'),
+    unlinkSourceButton: document.getElementById('unlinkSourceButton'),
+    createSourceButton: document.getElementById('createSourceButton'),
+    loadFromObsButton: document.getElementById('loadFromObsButton'),
+    obsSourceCount: document.getElementById('obsSourceCount'),
+    obsStatusLabel: document.getElementById('obsStatusLabel'),
+    // --- primary row ---
+    primaryButtonRow: document.getElementById('primaryButtonRow'),
+    saveToSourceButton: document.getElementById('saveToSourceButton'),
+    // --- create-source modal ---
+    createSourceModal: document.getElementById('createSourceModal'),
+    createSourceWarning: document.getElementById('createSourceWarning'),
+    createSceneSelect: document.getElementById('createSceneSelect'),
+    createSceneNewGroup: document.getElementById('createSceneNewGroup'),
+    createSceneNewName: document.getElementById('createSceneNewName'),
+    createSourceName: document.getElementById('createSourceName'),
+    createSourceWidth: document.getElementById('createSourceWidth'),
+    createSourceHeight: document.getElementById('createSourceHeight'),
+    createSourceError: document.getElementById('createSourceError'),
+    cancelCreateSourceButton: document.getElementById('cancelCreateSourceButton'),
+    confirmCreateSourceButton: document.getElementById('confirmCreateSourceButton'),
+    // --- load-from-OBS modal ---
+    obsSourcesModal: document.getElementById('obsSourcesModal'),
+    obsSourcesWarning: document.getElementById('obsSourcesWarning'),
+    obsSourceList: document.getElementById('obsSourceList'),
+    obsSourcesEmpty: document.getElementById('obsSourcesEmpty'),
+    rescanObsSourcesButton: document.getElementById('rescanObsSourcesButton'),
+    confirmLoadSourceButton: document.getElementById('confirmLoadSourceButton')
   };
 
   const OBS_STORAGE_KEYS = { port: 'obs_ws_port', password: 'obs_ws_password' };
@@ -89,6 +119,12 @@
   let obsConnected = false;
   let obsConnecting = false;
   let obsRetryTimer = null;
+
+  // Browser sources discovered in OBS that point at this widget.
+  // Shape: { inputName, sceneName, url, width, height }
+  let obsWidgetSources = [];
+  let selectedObsSourceIndex = -1;
+  let linkedSource = null; // the source this form is currently bound to
 
   init().catch((error) => {
     console.error(error);
@@ -678,8 +714,13 @@
   }
 
   function flashButton(button, text, bg, delay) {
-    const originalText = button.textContent;
+    if (!button) return;
+
+    // innerHTML, not textContent: the header buttons wrap an icon <img> and a
+    // count badge, and restoring text alone would drop them permanently.
+    const originalHtml = button.innerHTML;
     const originalBg = button.style.backgroundColor;
+    const wasDisabled = button.disabled;
 
     button.disabled = true;
     button.style.backgroundColor = bg;
@@ -687,8 +728,8 @@
 
     setTimeout(() => {
       button.style.backgroundColor = originalBg;
-      button.textContent = originalText;
-      button.disabled = false;
+      button.innerHTML = originalHtml;
+      button.disabled = wasDisabled;
     }, delay);
   }
 
@@ -716,6 +757,13 @@
     if (dom.obsConnectButton) {
       dom.obsConnectButton.title = obsConnected ? 'Connected to OBS' : 'Disconnected from OBS';
     }
+    if (dom.obsStatusLabel) {
+      dom.obsStatusLabel.textContent = obsConnected ? 'Connected' : 'Disconnected';
+    }
+    // Header actions only make sense while connected.
+    if (dom.createSourceButton) dom.createSourceButton.disabled = !obsConnected;
+    if (dom.loadFromObsButton) dom.loadFromObsButton.disabled = !obsConnected;
+    refreshObsWidgetSources();
   }
 
   async function connectObs(port, password) {
@@ -819,9 +867,369 @@
       connectObs(port, password);
     });
 
+    initObsFeatures();
+
     const saved = loadObsSettings();
     connectObs(saved.port, saved.password);
     startObsRetryLoop();
+  }
+
+  /* ------------------------------------------------- OBS header features */
+
+  function initObsFeatures() {
+    dom.createSourceButton?.addEventListener('click', openCreateSourceModal);
+    dom.cancelCreateSourceButton?.addEventListener('click', () => { dom.createSourceModal.open = false; });
+    dom.confirmCreateSourceButton?.addEventListener('click', handleCreateSourceConfirm);
+
+    dom.createSceneSelect?.addEventListener('change', onSceneSelectChange);
+    dom.createSceneSelect?.addEventListener('wa-change', onSceneSelectChange);
+
+    dom.loadFromObsButton?.addEventListener('click', openObsSourcesModal);
+    dom.rescanObsSourcesButton?.addEventListener('click', () => refreshObsWidgetSources({ render: true }));
+    dom.confirmLoadSourceButton?.addEventListener('click', handleLoadSourceConfirm);
+
+    dom.saveToSourceButton?.addEventListener('click', handleSaveToSource);
+    dom.unlinkSourceButton?.addEventListener('click', () => setLinkedSource(null));
+
+    [dom.createSourceModal, dom.obsSourcesModal].forEach((dialog) => {
+      dialog?.addEventListener('wa-show', () => document.body.classList.add('modal-open'));
+      dialog?.addEventListener('wa-after-hide', () => document.body.classList.remove('modal-open'));
+    });
+
+    setLinkedSource(null);
+  }
+
+  function onSceneSelectChange() {
+    const isNew = dom.createSceneSelect.value === '__new__';
+    dom.createSceneNewGroup.classList.toggle('hidden', !isNew);
+    if (isNew) setTimeout(() => dom.createSceneNewName.focus(), 0);
+  }
+
+  /* --------------------------------------------------------- linked source */
+
+  function setLinkedSource(source) {
+    linkedSource = source;
+    const isLinked = Boolean(source);
+
+    dom.linkedSourceChip?.classList.toggle('hidden', !isLinked);
+    dom.saveToSourceButton?.classList.toggle('hidden', !isLinked);
+    dom.primaryButtonRow?.classList.toggle('is-linked', isLinked);
+
+    if (isLinked && dom.linkedSourceName) {
+      dom.linkedSourceName.textContent = source.inputName;
+    }
+  }
+
+  /* -------------------------------------------------- create source & load */
+
+  async function openCreateSourceModal() {
+    dom.createSourceError.classList.add('hidden');
+    dom.createSourceWarning.classList.toggle('hidden', obsConnected);
+    dom.createSceneNewGroup.classList.add('hidden');
+
+    // Sensible default: the widget's own title as the source name.
+    dom.createSourceName.value = state.page.widgetTitle || 'Widget';
+
+    dom.createSourceModal.open = true;
+    await populateSceneOptions();
+  }
+
+  async function populateSceneOptions() {
+    const select = dom.createSceneSelect;
+    if (!select) return;
+
+    let scenes = [];
+    try {
+      scenes = await fetchObsScenes();
+    } catch (error) {
+      console.warn('Could not read OBS scenes:', error?.message || error);
+    }
+
+    // wa-select only has a working .value once it is upgraded and rendered,
+    // so wait for the upgrade before touching options or the value.
+    await customElements.whenDefined('wa-select');
+    await select.updateComplete;
+
+    select.innerHTML = '';
+
+    const label = document.createElement('span');
+    label.slot = 'label';
+    label.textContent = 'Scene Name';
+    select.appendChild(label);
+
+    scenes.forEach((sceneName) => {
+      const option = document.createElement('wa-option');
+      option.setAttribute('value', sceneName);
+      option.textContent = sceneName;
+      select.appendChild(option);
+    });
+
+    const newOption = document.createElement('wa-option');
+    newOption.setAttribute('value', '__new__');
+    newOption.textContent = '+ New scene…';
+    select.appendChild(newOption);
+
+    await customElements.whenDefined('wa-option');
+    await select.updateComplete;
+
+    select.value = scenes[0] || '__new__';
+    onSceneSelectChange();
+  }
+
+  async function handleCreateSourceConfirm() {
+    const usingNewScene = dom.createSceneSelect.value === '__new__';
+    const sceneName = usingNewScene
+      ? dom.createSceneNewName.value.trim()
+      : dom.createSceneSelect.value;
+    const inputName = dom.createSourceName.value.trim();
+    const width = Number(dom.createSourceWidth.value);
+    const height = Number(dom.createSourceHeight.value);
+
+    if (!obsConnected) return showCreateError('Connect to OBS first.');
+    if (!sceneName) return showCreateError('Enter a scene name.');
+    if (!inputName) return showCreateError('Enter a source name.');
+    if (!width || !height) return showCreateError('Width and height are required.');
+
+    const values = collectValues();
+    persistValues(values);
+    const url = buildWidgetUrl(values);
+
+    dom.confirmCreateSourceButton.disabled = true;
+    dom.confirmCreateSourceButton.textContent = 'Creating…';
+
+    try {
+      await createObsBrowserSource({ sceneName, inputName, url, width, height, createScene: usingNewScene });
+
+      dom.createSourceModal.open = false;
+      setLinkedSource({ inputName, sceneName, url, width, height });
+      await refreshObsWidgetSources();
+      flashButton(dom.createSourceButton, 'Source created in OBS', '#4CAF50', 3000);
+    } catch (error) {
+      console.error(error);
+      showCreateError(error?.message || 'OBS rejected the request.');
+    } finally {
+      dom.confirmCreateSourceButton.disabled = false;
+      dom.confirmCreateSourceButton.textContent = 'Create & Load';
+    }
+  }
+
+  function showCreateError(message) {
+    dom.createSourceError.textContent = message;
+    dom.createSourceError.classList.remove('hidden');
+  }
+
+  /* --------------------------------------------------------- load from OBS */
+
+  async function openObsSourcesModal() {
+    dom.obsSourcesWarning.classList.toggle('hidden', obsConnected);
+    selectedObsSourceIndex = -1;
+    dom.obsSourcesModal.open = true;
+    await refreshObsWidgetSources({ render: true });
+  }
+
+  async function refreshObsWidgetSources({ render = false } = {}) {
+    if (!obsConnected) {
+      obsWidgetSources = [];
+    } else {
+      try {
+        obsWidgetSources = await fetchObsWidgetSources();
+      } catch (error) {
+        console.warn('Could not read OBS sources:', error?.message || error);
+        obsWidgetSources = [];
+      }
+    }
+
+    if (dom.obsSourceCount) dom.obsSourceCount.textContent = String(obsWidgetSources.length);
+    if (render) renderObsSourceList();
+  }
+
+  function renderObsSourceList() {
+    const list = dom.obsSourceList;
+    if (!list) return;
+
+    list.innerHTML = '';
+    dom.obsSourcesEmpty?.classList.toggle('hidden', obsWidgetSources.length > 0);
+
+    obsWidgetSources.forEach((source, index) => {
+      const row = document.createElement('div');
+      row.className = 'obs-source-row' + (index === selectedObsSourceIndex ? ' is-selected' : '');
+
+      const radio = document.createElement('span');
+      radio.className = 'obs-source-radio';
+
+      const meta = document.createElement('div');
+      meta.className = 'obs-source-meta';
+
+      const name = document.createElement('span');
+      name.className = 'obs-source-name';
+      name.textContent = source.inputName;
+
+      const scene = document.createElement('span');
+      scene.className = 'obs-source-scene';
+      scene.textContent = source.sceneName + ' · ' + source.width + ' × ' + source.height;
+
+      const params = document.createElement('span');
+      params.className = 'obs-source-params';
+      params.textContent = paramsPreview(source.url);
+
+      meta.append(name, scene, params);
+      row.append(radio, meta);
+
+      row.addEventListener('click', () => {
+        selectedObsSourceIndex = index;
+        renderObsSourceList();
+      });
+
+      list.appendChild(row);
+    });
+
+    if (dom.confirmLoadSourceButton) {
+      dom.confirmLoadSourceButton.disabled = selectedObsSourceIndex < 0;
+    }
+  }
+
+  function paramsPreview(url) {
+    try {
+      const search = new URL(url).search;
+      return search || '(no parameters)';
+    } catch (error) {
+      return url;
+    }
+  }
+
+  function handleLoadSourceConfirm() {
+    const source = obsWidgetSources[selectedObsSourceIndex];
+    if (!source) return;
+
+    try {
+      const parsedUrl = new URL(source.url);
+      loadDefaults({ silent: true });
+      applyValuesFromUrl(parsedUrl);
+      updatePreview();
+
+      dom.obsSourcesModal.open = false;
+      setLinkedSource(source);
+      flashButton(dom.loadFromObsButton, 'Settings loaded', '#4CAF50', 2500);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  /* --------------------------------------------------------- save to source */
+
+  async function handleSaveToSource() {
+    if (!linkedSource) return;
+
+    const values = collectValues();
+    persistValues(values);
+    const url = buildWidgetUrl(values);
+
+    try {
+      await updateObsBrowserSourceUrl(linkedSource.inputName, url);
+      linkedSource.url = url;
+      flashButton(dom.saveToSourceButton, 'Saved to OBS', '#4CAF50', 2500);
+    } catch (error) {
+      console.error(error);
+      flashButton(dom.saveToSourceButton, 'Save failed', '#d9534f', 3000);
+    }
+  }
+
+  /* ------------------------------------------------------------- OBS calls */
+
+  async function fetchObsScenes() {
+    if (!obsConnected || !obs) return [];
+
+    const { scenes = [] } = await obs.call('GetSceneList');
+    // OBS returns scenes bottom-up; reverse so the list matches the OBS UI.
+    return scenes.map((scene) => scene.sceneName).reverse();
+  }
+
+  async function fetchObsWidgetSources() {
+    if (!obsConnected || !obs) return [];
+
+    const { inputs = [] } = await obs.call('GetInputList');
+    const browserInputs = inputs.filter((input) =>
+      String(input.inputKind || input.unversionedInputKind || '').includes('browser_source')
+    );
+    if (!browserInputs.length) return [];
+
+    const sceneByInput = await buildSceneAttributionMap();
+    const results = [];
+
+    for (const input of browserInputs) {
+      let settings;
+      try {
+        ({ inputSettings: settings } = await obs.call('GetInputSettings', { inputName: input.inputName }));
+      } catch (error) {
+        continue;
+      }
+
+      const url = settings?.url || '';
+      if (!url.startsWith(state.widgetUrl)) continue;
+
+      results.push({
+        inputName: input.inputName,
+        sceneName: sceneByInput.get(input.inputName) || 'Unassigned',
+        url,
+        width: settings.width || 0,
+        height: settings.height || 0
+      });
+    }
+
+    return results;
+  }
+
+  // sourceName -> sceneName, so each row can say where the source lives.
+  async function buildSceneAttributionMap() {
+    const map = new Map();
+
+    try {
+      const { scenes = [] } = await obs.call('GetSceneList');
+
+      for (const scene of scenes) {
+        const { sceneItems = [] } = await obs.call('GetSceneItemList', { sceneName: scene.sceneName });
+        sceneItems.forEach((item) => {
+          if (!map.has(item.sourceName)) map.set(item.sourceName, scene.sceneName);
+        });
+      }
+    } catch (error) {
+      console.warn('Could not attribute OBS scenes:', error?.message || error);
+    }
+
+    return map;
+  }
+
+  async function createObsBrowserSource({ sceneName, inputName, url, width, height, createScene }) {
+    if (!obsConnected || !obs) throw new Error('Not connected to OBS.');
+
+    if (createScene) {
+      await obs.call('CreateScene', { sceneName });
+    }
+
+    await obs.call('CreateInput', {
+      sceneName,
+      inputName,
+      inputKind: 'browser_source',
+      inputSettings: { url, width, height },
+      sceneItemEnabled: true
+    });
+  }
+
+  async function updateObsBrowserSourceUrl(inputName, url) {
+    if (!obsConnected || !obs) throw new Error('Not connected to OBS.');
+
+    await obs.call('SetInputSettings', {
+      inputName,
+      inputSettings: { url },
+      overlay: true
+    });
+
+    // Force a reload against the new URL instead of waiting for OBS to notice.
+    try {
+      await obs.call('PressInputPropertiesButton', { inputName, propertyName: 'refreshnocache' });
+    } catch (error) {
+      // Older OBS builds name this button differently; a stale frame is fine.
+    }
   }
 
 })();

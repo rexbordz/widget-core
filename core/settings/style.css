@@ -851,3 +851,539 @@ a {
   text-decoration: none; /*Remove the annoying blue underline under hyperlinks*/
 }
 
+
+/* ==========================================================================
+   OBS integration — full-width header, Auto-create Source & Load, Load from OBS
+   Append this block to the end of core/settings/style.css.
+
+   The old `.settings-header` rules above are now unused (the header moved out
+   of `.settings-panel`); safe to delete them whenever you like.
+   ========================================================================== */
+
+/* Shell: header on top at 100% width, panels below it ---------------------- */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Overrides of the earlier 100vh rules — the container is now a flex child. */
+.settings-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  width: 100%;
+}
+
+.settings-panel,
+.panel-resizer {
+  height: 100%;
+}
+
+.app-header {
+  position: relative;
+  z-index: 2;
+
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  width: 100%;
+  padding: 12px 20px;
+
+  background: #141414;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* The global `button` rule sets width:100% / margin-top:15px — undo in header. */
+.app-header button {
+  width: auto;
+  margin-top: 0;
+}
+
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.header-divider {
+  width: 1px;
+  height: 26px;
+  background: #262626;
+}
+
+/* Header buttons */
+
+.header-button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #3d3d3d, #292929);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease, filter 0.2s ease;
+}
+
+.header-button:hover {
+  background: linear-gradient(180deg, #484848, #333333);
+}
+
+.header-button-primary {
+  background: linear-gradient(180deg, #3b82f6, #1c3faa);
+}
+
+.header-button-primary:hover {
+  background: linear-gradient(180deg, #3b82f6, #1c3faa);
+  filter: brightness(1.1);
+}
+
+.header-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.header-button-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.header-button-badge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(127, 166, 230, 0.18);
+  color: #9fbdf2;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Linked-source chip */
+
+.linked-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  white-space: nowrap;
+}
+
+.linked-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+  flex: 0 0 auto;
+}
+
+.linked-chip-text {
+  font-size: 0.78rem;
+  color: #cfe0ff;
+}
+
+.linked-chip-text b {
+  font-weight: 600;
+}
+
+.app-header .linked-chip-unlink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #8ea9d6;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-header .linked-chip-unlink:hover {
+  background: none;
+  color: #fff;
+}
+
+/* OBS status pill (replaces the old 34px icon-only .obs-connect-btn) */
+
+.obs-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #2b2b2b;
+  background: #1b1b1b;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.obs-status-pill:hover {
+  background: #1b1b1b;
+  border-color: #3d3d3d;
+}
+
+.obs-status-pill .obs-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.obs-status-label {
+  font-size: 0.8rem;
+  color: #d6d6d6;
+  font-weight: 500;
+}
+
+/* The dot is inline in the pill now, not absolutely positioned. */
+.obs-status-pill .obs-status-dot {
+  position: static;
+  width: 7px;
+  height: 7px;
+}
+
+/* Primary button row (Copy Link URL, + Save to Source when linked) */
+
+.primary-button-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.primary-button-row.is-linked {
+  grid-template-columns: 1fr 1fr;
+}
+
+.primary-button-row button {
+  margin-top: 0;
+}
+
+/* Feature dialogs */
+
+.obs-feature-dialog::part(dialog) {
+  width: min(560px, 100%);
+}
+
+/* Single source of truth for every control's height in these two dialogs.
+   Percentage/stretch sizing on WA's stepper buttons doesn't work against an
+   auto-height box (see the stepper rule below for why), so instead every
+   control locks to this one fixed value — change it here to resize them all
+   at once. */
+.obs-feature-dialog {
+  --obs-control-height: 44px;
+}
+
+.obs-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Grid items default to min-width:auto, so they refuse to shrink below the
+   number input's intrinsic content width (padding + both steppers) — that
+   was blowing the row past the dialog and forcing a horizontal scrollbar. */
+.obs-form-grid > .obs-form-group {
+  min-width: 0;
+}
+
+/* Belt-and-suspenders: if the row ever does need to scroll horizontally
+   (e.g. a much narrower dialog), theme it like the vertical scrollbars
+   instead of leaving it to the OS default. */
+.obs-form-grid {
+  overflow-x: auto;
+}
+
+.obs-form-grid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.obs-form-grid::-webkit-scrollbar-track {
+  background: #181818;
+}
+
+.obs-form-grid::-webkit-scrollbar-thumb {
+  background-color: #37393d;
+  border-radius: 3px;
+}
+
+.obs-form-grid::-webkit-scrollbar-thumb:hover {
+  background-color: #4b4d52;
+}
+
+.obs-form-group wa-select,
+.obs-form-group wa-number-input {
+  display: block;
+  width: 100%;
+}
+
+.obs-form-group wa-select::part(form-control-label),
+.obs-form-group wa-number-input::part(form-control-label) {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.obs-form-group wa-select::part(combobox),
+.obs-form-group wa-number-input::part(base) {
+  background-color: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  height: var(--obs-control-height);
+  min-height: var(--obs-control-height);
+}
+
+.obs-form-group wa-select::part(combobox) {
+  padding: 0 10px;
+}
+
+.obs-form-group wa-select::part(display-input),
+.obs-form-group wa-number-input::part(input) {
+  color: #fff;
+  font-size: 0.9rem;
+  padding: 0 10px;
+  height: 100%;
+}
+
+.obs-form-group wa-select::part(display-input) {
+  padding: 0;
+}
+
+/* WA auto-sizes the open listbox to fill available viewport space via an
+   internal --auto-size-available-height var, which is what made it stretch
+   almost to the bottom of the screen. Cap it explicitly instead — raise or
+   lower this max-height to taste. */
+.obs-form-group wa-select::part(listbox) {
+  max-height: 240px;
+}
+
+.obs-form-group wa-select::part(listbox)::-webkit-scrollbar {
+  width: 6px;
+}
+
+.obs-form-group wa-select::part(listbox)::-webkit-scrollbar-track {
+  background: #181818;
+}
+
+.obs-form-group wa-select::part(listbox)::-webkit-scrollbar-thumb {
+  background-color: #37393d;
+  border-radius: 3px;
+}
+
+.obs-form-group wa-select::part(listbox)::-webkit-scrollbar-thumb:hover {
+  background-color: #4b4d52;
+}
+
+/* "+ New scene…" is a normal light-DOM child slotted into the listbox above,
+   so it can stick to the bottom of that scroll container like any other
+   element — no shadow-part trickery needed. */
+#createSceneSelect wa-option[value='__new__'] {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background-color: var(--field-bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* WA gives the steppers a fixed pixel height of their own, which beats
+   align-self:stretch outright — stretch only computes a used size when the
+   cross-size property is auto, and percentages don't count (a percentage
+   against an auto-height parent just resolves back to auto, it doesn't
+   trigger stretch). Locking both this and part(base) above to the same
+   --obs-control-height var is what actually keeps them in sync. */
+.obs-form-group wa-number-input::part(stepper-increment),
+.obs-form-group wa-number-input::part(stepper-decrement) {
+  flex: 0 0 auto;
+  width: 32px;
+  height: var(--obs-control-height);
+  margin: 0;
+  background: transparent;
+  border: none;
+  color: #bbb;
+}
+
+.obs-form-group wa-number-input::part(stepper-increment):hover,
+.obs-form-group wa-number-input::part(stepper-decrement):hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.obs-modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.obs-modal-footer-note {
+  flex: 1;
+  text-align: left;
+  font-size: 0.8rem;
+  color: #8b8b8b;
+}
+
+.obs-modal-footer .obs-modal-footer-button {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+}
+
+/* Source list */
+
+.obs-source-list-wrap {
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.obs-source-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.obs-source-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #232323;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.obs-source-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.obs-source-row.is-selected {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.obs-source-radio {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid #4a4a4a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.obs-source-row.is-selected .obs-source-radio {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.obs-source-radio::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.obs-source-row.is-selected .obs-source-radio::after {
+  background: #fff;
+}
+
+.obs-source-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.obs-source-name {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.obs-source-scene,
+.obs-source-params {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.obs-source-scene {
+  font-size: 0.76rem;
+  color: #8b8b8b;
+}
+
+.obs-source-params {
+  font-size: 0.72rem;
+  color: #6f6f6f;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.obs-source-empty {
+  padding: 18px 14px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #8b8b8b;
+}
+
+.obs-source-rescan {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 0;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #8b8b8b;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.obs-source-rescan:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+}
+
+.obs-source-rescan-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.obs-source-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.obs-source-list::-webkit-scrollbar-thumb {
+  background-color: #37393d;
+  border-radius: 3px;
+}
+
+/* Blur the shell (not just .settings-container) while a dialog is open. */
+body.modal-open .app-shell {
+  filter: blur(6px);
+  pointer-events: none;
+  user-select: none;
+}

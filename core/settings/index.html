@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>Widget Settings</title>
-  
+
   <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 
   <!-- Required: default theme + autoloader -->
@@ -26,41 +26,152 @@
     <div class="loading-spinner"></div>
   </div>
 
-  <div class="settings-container">
-    <div class="settings-panel">
-      <div class="settings-header">
-        <img id="widgetLogo" src="../../assets/images/rexbordz-blue-and-white-gradient-logo.png" alt="Widget Logo" class="widget-logo">
-        <h1 id="widgetTitle" class="widget-title">Widget Settings</h1>
+  <!-- app-shell: header spans the full page width, panels sit below it -->
+  <div class="app-shell">
 
-        <div class="header-actions">
-          <button id="obsConnectButton" class="obs-connect-btn" type="button" title="Disconnected from OBS">
-            <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" alt="OBS" class="obs-icon">
-            <span id="obsStatusDot" class="obs-status-dot offline"></span>
-          </button>
+    <header class="app-header">
+      <img id="widgetLogo" src="../../assets/images/rexbordz-blue-and-white-gradient-logo.png" alt="Widget Logo" class="widget-logo">
+      <h1 id="widgetTitle" class="widget-title">Widget Settings</h1>
+
+      <!-- Shown once the form is bound to a browser source (created or loaded) -->
+      <div id="linkedSourceChip" class="linked-chip hidden">
+        <span class="linked-chip-dot"></span>
+        <span class="linked-chip-text">Linked to <b id="linkedSourceName"></b></span>
+        <button id="unlinkSourceButton" class="linked-chip-unlink" type="button" title="Unlink">&times;</button>
+      </div>
+
+      <div class="header-actions">
+        <button id="createSourceButton" class="header-button header-button-primary" type="button">
+          <img src="https://api.iconify.design/mdi:plus.svg?color=%23ffffff" alt="" class="header-button-icon">
+          Auto-create Source &amp; Load
+        </button>
+
+        <button id="loadFromObsButton" class="header-button" type="button">
+          <img src="https://api.iconify.design/mdi:import.svg?color=%23ffffff" alt="" class="header-button-icon">
+          Load from OBS
+          <span id="obsSourceCount" class="header-button-badge">0</span>
+        </button>
+
+        <div class="header-divider"></div>
+
+        <button id="obsConnectButton" class="obs-status-pill" type="button" title="Disconnected from OBS">
+          <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" alt="OBS" class="obs-icon">
+          <span id="obsStatusLabel" class="obs-status-label">Disconnected</span>
+          <span id="obsStatusDot" class="obs-status-dot offline"></span>
+        </button>
+      </div>
+    </header>
+
+    <div class="settings-container">
+      <div class="settings-panel">
+        <div class="settings-body">
+          <div id="settingsForm"></div>
+          <div id="actionArea"></div>
+
+          <!-- Two-up when linked to a source, otherwise Copy Link URL spans the row -->
+          <div id="primaryButtonRow" class="primary-button-row">
+            <button id="saveToSourceButton" type="button" class="primary-button hidden">Save to Source</button>
+            <button id="applySettings" type="button" class="primary-button">Copy Link URL</button>
+          </div>
+
+          <div class="utility-button-row">
+            <button id="loadDefaultsButton" type="button" class="utility-button">Load Default</button>
+            <button id="openLoadSettingsModalButton" type="button" class="utility-button utility-button-gray">Load Settings</button>
+          </div>
+
+          <div id="settingsFooter" class="settings-footer"></div>
         </div>
       </div>
 
-      <div class="settings-body">
-        <div id="settingsForm"></div>
-        <div id="actionArea"></div>
+      <div id="panelResizer" class="panel-resizer"></div>
 
-        <button id="applySettings" type="button" class="primary-button">Copy Link URL</button>
-
-        <div class="utility-button-row">
-          <button id="loadDefaultsButton" type="button" class="utility-button">Load Default</button>
-          <button id="openLoadSettingsModalButton" type="button" class="utility-button utility-button-gray">Load Settings</button>
-        </div>
-
-        <div id="settingsFooter" class="settings-footer"></div>
+      <div class="preview-panel">
+        <iframe id="previewFrame" frameborder="0"></iframe>
       </div>
-    </div>
-
-    <div id="panelResizer" class="panel-resizer"></div>
-
-    <div class="preview-panel">
-      <iframe id="previewFrame" frameborder="0"></iframe>
     </div>
   </div>
+
+  <!-- Auto-create Source & Load -->
+  <wa-dialog id="createSourceModal" class="obs-feature-dialog" light-dismiss>
+    <div slot="label" class="obs-modal-header">
+      <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" class="obs-modal-icon" alt="OBS logo">
+      <span class="obs-modal-title">Auto-create Source &amp; Load</span>
+    </div>
+
+    <p class="modal-note">Adds a browser source with the URL your settings have built so far. Pick an existing scene or create a new one.</p>
+
+    <div id="createSourceWarning" class="obs-modal-warning hidden">Connect to OBS first.</div>
+
+    <div class="obs-form-group">
+      <wa-select id="createSceneSelect" placeholder="Select a scene">
+        <span slot="label">Scene Name</span>
+        <!-- Existing scenes are injected here from GetSceneList -->
+        <wa-option value="__new__">+ New scene&hellip;</wa-option>
+      </wa-select>
+    </div>
+
+    <!-- Revealed when "+ New scene…" is selected -->
+    <div id="createSceneNewGroup" class="obs-form-group hidden">
+      <wa-input id="createSceneNewName" autocomplete="off" placeholder="e.g. Chat Overlay">
+        <span slot="label">New Scene Name</span>
+      </wa-input>
+    </div>
+
+    <div class="obs-form-group">
+      <wa-input id="createSourceName" autocomplete="off" placeholder="e.g. ChatRD">
+        <span slot="label">Source Name</span>
+      </wa-input>
+    </div>
+
+    <div class="obs-form-grid">
+      <div class="obs-form-group">
+        <wa-number-input id="createSourceWidth" min="1" step="10" value="480">
+          <span slot="label">Width</span>
+        </wa-number-input>
+      </div>
+      <div class="obs-form-group">
+        <wa-number-input id="createSourceHeight" min="1" step="10" value="900">
+          <span slot="label">Height</span>
+        </wa-number-input>
+      </div>
+    </div>
+
+    <p id="createSourceError" class="modal-error hidden"></p>
+
+    <div slot="footer" class="obs-modal-footer">
+      <span class="obs-modal-footer-note">The source is created in OBS and linked to this form.</span>
+      <button id="cancelCreateSourceButton" type="button" class="utility-button obs-modal-footer-button">Cancel</button>
+      <button id="confirmCreateSourceButton" type="button" class="primary-button obs-modal-footer-button">Create &amp; Load</button>
+    </div>
+  </wa-dialog>
+
+  <!-- Load from OBS -->
+  <wa-dialog id="obsSourcesModal" class="obs-feature-dialog" light-dismiss>
+    <div slot="label" class="obs-modal-header">
+      <img src="https://api.iconify.design/simple-icons:obsstudio.svg?color=%23ffffff" class="obs-modal-icon" alt="OBS logo">
+      <span class="obs-modal-title">Load from OBS</span>
+    </div>
+
+    <p class="modal-note">Browser sources pointing at this widget. Selecting one fills the form with its current URL parameters.</p>
+
+    <div id="obsSourcesWarning" class="obs-modal-warning hidden">Connect to OBS first.</div>
+
+    <div class="obs-source-list-wrap">
+      <div id="obsSourceList" class="obs-source-list">
+        <!-- Rows injected from GetInputList + GetInputSettings -->
+      </div>
+      <div id="obsSourcesEmpty" class="obs-source-empty hidden">No browser sources using this widget were found.</div>
+      <button id="rescanObsSourcesButton" type="button" class="obs-source-rescan">
+        <img src="https://api.iconify.design/mdi:refresh.svg?color=%238b8b8b" alt="" class="obs-source-rescan-icon">
+        Rescan OBS
+      </button>
+    </div>
+
+    <div slot="footer" class="obs-modal-footer">
+      <span class="obs-modal-footer-note">Loading replaces unsaved changes in the form.</span>
+      <button id="confirmLoadSourceButton" type="button" class="primary-button obs-modal-footer-button" disabled>Load &amp; Link</button>
+    </div>
+  </wa-dialog>
 
   <wa-dialog id="loadSettingsModal" label="Load Settings" light-dismiss>
     <p class="modal-note">Paste your widget URL with parameters to populate the form fields.</p>
