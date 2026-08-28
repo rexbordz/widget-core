@@ -1,0 +1,12 @@
+name: Purge jsDelivr CDN cache
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge jsDelivr cache for widget-core@main
+        run: curl -fsS "https://purge.jsdelivr.net/gh/rexbordz/widget-core@main/"
