@@ -77,6 +77,36 @@ const Utils = {
     return iterate(jsonObject);
   },
 
+  // credits to nutty. Use this to resolve messages with emotes.
+  renderMessageWithEmotesHtml(originalMessage, emotes) {
+    if (!emotes || emotes.length === 0) return originalMessage;
+
+    // Sort emotes by startIndex
+    emotes.sort((a, b) => a.startIndex - b.startIndex);
+
+    let html = '';
+    let cursor = 0;
+
+    emotes.forEach(emote => {
+        // Add text before the emote
+        if (emote.startIndex > cursor) {
+            html += Utils.escapeHtml(originalMessage.slice(cursor, emote.startIndex));
+        }
+
+        // Add emote image
+        html += `<img src="${Utils.escapeHtml(emote.imageUrl)}" alt="${Utils.escapeHtml(emote.name)}" title="${Utils.escapeHtml(emote.name)}" class="emote">`;
+
+        cursor = emote.endIndex + 1;
+    });
+
+    // Add remaining text after last emote
+    if (cursor < originalMessage.length) {
+        html += Utils.escapeHtml(originalMessage.slice(cursor));
+    }
+
+    return html;
+  },
+
   async getKickIds(username) {
     // First attempt with the original username
     let url = `https://kick.com/api/v2/channels/${username}`;
@@ -276,8 +306,7 @@ const Utils = {
     return emotes;
   },
 
-  // Escapes text before it goes into innerHTML. Every user-controlled string
-  // in getTwitchMessageFromParts runs through this.
+  // Escapes text before it goes into innerHTML
   escapeHtml(value) {
     const chars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
     return String(value ?? '').replace(/[&<>"']/g, (char) => chars[char]);
