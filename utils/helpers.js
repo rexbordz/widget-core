@@ -164,18 +164,22 @@ const Utils = {
       if (!badge || !badge.type) return;
 
       let icon = null;
+      let fallbackIcon = null;
       if (badge.type === 'subscriber') {
         // Highest tier the user has actually earned. A channel may define no
-        // tiers at all, in which case the generic icon stands in.
+        // tiers at all, in which case the generic icon stands in. Tier art is
+        // served from files.kick.com, which throttles — keep the bundled icon
+        // as a fallback the renderer can swap in when a request is dropped.
         const tier = (subBadges || [])
           .filter((b) => b && b.months <= (badge.count ?? 0))
           .sort((a, b) => b.months - a.months)[0];
-        icon = tier?.badge_image?.src || `${iconBase}badge-subscriber.svg`;
+        fallbackIcon = `${iconBase}badge-subscriber.svg`;
+        icon = tier?.badge_image?.src || fallbackIcon;
       } else if (Utils._kickBadgeTypes.includes(badge.type)) {
         icon = `${iconBase}badge-${badge.type}.svg`;
       }
 
-      items.push({ sort: badge.sort_order, icon, label: badge.text || badge.type });
+      items.push({ sort: badge.sort_order, icon, fallbackIcon, label: badge.text || badge.type });
     });
 
     // A missing sort_order sorts last. The sort is stable, so ties keep the
@@ -184,9 +188,10 @@ const Utils = {
 
     return items
       .sort((a, b) => order(a.sort) - order(b.sort))
-      .map(({ icon, label }) => {
+      .map(({ icon, fallbackIcon, label }) => {
         const entry = { label: String(label ?? '').toUpperCase() };
         if (icon) entry.icon = icon;
+        if (fallbackIcon && fallbackIcon !== icon) entry.fallbackIcon = fallbackIcon;
         return entry;
       });
   },
