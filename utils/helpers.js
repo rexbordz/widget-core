@@ -107,6 +107,74 @@ const Utils = {
     return html;
   },
 
+  // TikTok's emote objects carry `emoteImageUrl`/`emoteId` and a single
+  // `placeInComment` index rather than a startIndex/endIndex span, so each
+  // emote replaces exactly one placeholder character in the comment. Requires
+  // tikTokChatEmotes (utils/tiktok-emotes.js) to be loaded first.
+  renderTikTokMessageWithEmotesHtml(originalMessage, emotes) {
+    if (!emotes || emotes.length === 0) return originalMessage;
+
+    const text = String(originalMessage ?? '');
+    const sorted = [...emotes].sort((a, b) => a.placeInComment - b.placeInComment);
+
+    let html = '';
+    let cursor = 0;
+
+    sorted.forEach(emote => {
+      // Add text before the emote
+      if (emote.placeInComment > cursor) {
+        html += Utils.renderTikTokTextSegment(text.slice(cursor, emote.placeInComment));
+      }
+
+      // Add emote image, replacing the single placeholder character
+      const label = Utils.escapeHtml(emote.emoteId ?? '');
+      html += `<img src="${Utils.escapeHtml(emote.emoteImageUrl)}" alt="${label}" title="${label}" class="emote">`;
+
+      cursor = emote.placeInComment + 1;
+    });
+
+    // Add remaining text after last emote
+    if (cursor < text.length) {
+      html += Utils.renderTikTokTextSegment(text.slice(cursor));
+    }
+
+    return html;
+  },
+
+  // Plain text segments can also contain typed shortcodes like "[laughcry]",
+  // mapped in tikTokChatEmotes (utils/tiktok-emotes.js) to either a PNG
+  // filename served from assets/images/tiktok/emotes/ or a plain unicode
+  // emoji. Walk the segment and swap any recognised shortcode in place,
+  // escaping everything else.
+  renderTikTokTextSegment(segment) {
+    let html = '';
+    let cursor = 0;
+    const shortcodePattern = /\[[a-z0-9_]+\]/gi;
+    let match;
+
+    while ((match = shortcodePattern.exec(segment)) !== null) {
+      const token = match[0];
+      const value = tikTokChatEmotes[token];
+
+      if (value === undefined) continue; // Not a known shortcode, leave as literal text
+
+      html += Utils.escapeHtml(segment.slice(cursor, match.index));
+
+      if (value.endsWith('.png')) {
+        const label = Utils.escapeHtml(token);
+        html += `<img src="${Utils.escapeHtml(`assets/images/tiktok/emotes/${value}`)}" alt="${label}" title="${label}" class="emote">`;
+      } else {
+        // Value is a plain unicode emoji, not a filename
+        html += Utils.escapeHtml(value);
+      }
+
+      cursor = match.index + token.length;
+    }
+
+    html += Utils.escapeHtml(segment.slice(cursor));
+    return html;
+  },
+
   async getKickIds(username) {
     // First attempt with the original username
     let url = `https://kick.com/api/v2/channels/${username}`;
