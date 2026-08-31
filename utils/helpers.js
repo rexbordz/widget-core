@@ -112,9 +112,9 @@ const Utils = {
   // emote replaces exactly one placeholder character in the comment. Requires
   // tikTokChatEmotes (utils/tiktok-emotes.js) to be loaded first.
   renderTikTokMessageWithEmotesHtml(originalMessage, emotes) {
-    if (!emotes || emotes.length === 0) return originalMessage;
-
     const text = String(originalMessage ?? '');
+
+    if (!emotes || emotes.length === 0) return Utils.renderTikTokTextSegment(text);
     const sorted = [...emotes].sort((a, b) => a.placeInComment - b.placeInComment);
 
     let html = '';
