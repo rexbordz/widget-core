@@ -110,7 +110,7 @@ const Utils = {
   // TikTok's emote objects carry `emoteImageUrl`/`emoteId` and a single
   // `placeInComment` index rather than a startIndex/endIndex span, so each
   // emote replaces exactly one placeholder character in the comment. Requires
-  // tikTokChatEmotes (utils/tiktok-emotes.js) to be loaded first.
+  // tikTokChatEmotes (utils/tiktok-emotes-and-badges.js) to be loaded first.
   renderTikTokMessageWithEmotesHtml(originalMessage, emotes) {
     const text = String(originalMessage ?? '');
 
@@ -142,7 +142,7 @@ const Utils = {
   },
 
   // Plain text segments can also contain typed shortcodes like "[laughcry]",
-  // mapped in tikTokChatEmotes (utils/tiktok-emotes.js) to either a PNG
+  // mapped in tikTokChatEmotes (utils/tiktok-emotes-and-badges.js) to either a PNG
   // filename served from assets/images/tiktok/emotes/ or a plain unicode
   // emoji. Walk the segment and swap any recognised shortcode in place,
   // escaping everything else.
@@ -287,11 +287,78 @@ const Utils = {
     return items
       .sort((a, b) => order(a.sort) - order(b.sort))
       .map(({ icon, fallbackIcon, label }) => {
-        const entry = { label: String(label ?? '').toUpperCase() };
+        const entry = { label: String(label ?? '') };
         if (icon) entry.icon = icon;
         if (fallbackIcon && fallbackIcon !== icon) entry.fallbackIcon = fallbackIcon;
         return entry;
       });
+  },
+
+  // credits to vortisRD (the scraped icon urls and chip colors)
+  // TikFinity gives every badge a `badgeSceneType` but an image url for only
+  // one of them, so the rest are rebuilt from tikTokBadgeData
+  // (utils/tiktok-emotes-and-badges.js), which must be loaded first.
+  //
+  // Emitted in the order TikTok paints them — grade, fan club, top gifter,
+  // mod — which is not the order they arrive in. Returns { icon, color, text,
+  // label } descriptors, where `text` sits beside the icon on the chip.
+  getTikTokBadges(data, { fansClubName = '' } = {}) {
+    if (!data) return [];
+
+    const badges = [];
+    const byScene = new Map();
+    (data.userBadges || []).forEach((badge) => {
+      if (badge && badge.badgeSceneType != null) byScene.set(badge.badgeSceneType, badge);
+    });
+
+    // Tiers are listed low to high, so the last one the level clears wins. A
+    // level below the first tier means the badge isn't really earned yet.
+    const tierFor = (tiers, level) =>
+      typeof level === 'number' ? tiers.filter((t) => level >= t.min).pop() : null;
+
+    const url = (icon) => tikTokBadgeData.base + icon;
+
+    const grade = byScene.get(8);
+    const gradeTier = grade && tierFor(tikTokBadgeData.grade, grade.level);
+    if (gradeTier) {
+      badges.push({
+        icon: url(gradeTier.icon),
+        color: gradeTier.color,
+        text: String(grade.level),
+        label: `Level ${grade.level}`
+      });
+    }
+
+    // The chip's text is the club's name, which the payload never carries — it
+    // comes from the widget's own settings. Without it the icon stands alone.
+    const fan = byScene.get(10);
+    const fanTier = fan && tierFor(tikTokBadgeData.fan, fan.level);
+    if (fanTier) {
+      const entry = { icon: url(fanTier.icon), color: fanTier.color, label: `Fan level ${fan.level}` };
+      if (fansClubName) entry.text = String(fansClubName);
+      badges.push(entry);
+    }
+
+    // The only badge whose art the payload ships. Its rank lives on the message
+    // rather than on the badge.
+    const gifter = byScene.get(6);
+    if (gifter && gifter.url) {
+      const entry = { icon: gifter.url, color: tikTokBadgeData.topGifter.color, label: 'Top gifter' };
+      if (data.topGifterRank > 0) entry.text = `No. ${data.topGifterRank}`;
+      badges.push(entry);
+    }
+
+    // Announced twice — as a scene-1 badge and as a top-level flag — and not
+    // always both, so take either.
+    if (data.isModerator || byScene.has(1)) {
+      badges.push({
+        icon: url(tikTokBadgeData.mod.icon),
+        color: tikTokBadgeData.mod.color,
+        label: 'Moderator'
+      });
+    }
+
+    return badges;
   },
 
   // Kick sends raw message text with its own emotes inlined as `[emote:id:name]`
