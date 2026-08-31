@@ -162,7 +162,7 @@ const Utils = {
 
       if (value.endsWith('.png')) {
         const label = Utils.escapeHtml(token);
-        html += `<img src="${Utils.escapeHtml(`assets/images/tiktok/emotes/${value}`)}" alt="${label}" title="${label}" class="emote">`;
+        html += `<img src="${Utils.escapeHtml(`https://rexbordz.github.io/widget-core/assets/images/tiktok/emotes/${value}`)}" alt="${label}" title="${label}" class="emote">`;
       } else {
         // Value is a plain unicode emoji, not a filename
         html += Utils.escapeHtml(value);
