@@ -1,43 +1,73 @@
 const Utils = {
-  async getTwitchAvatar(username) {
-    const url = `https://decapi.me/twitch/avatar/${encodeURIComponent(username)}`;
+  // decapi replies in plain text, and it answers 200 to a bad login too — the
+  // body is just "User not found.". Unchecked, that string became the avatar
+  // url and reached a css url(), which paints nothing and never errors. Only a
+  // real url is returned; anything else is null, which the widget draws as the
+  // chatter's initial instead.
+  //
+  // The promise is cached rather than its result, so a chatter's burst of
+  // messages costs one request instead of one each. Failures drop out of the
+  // cache so the next message retries.
+  _twitchAvatars: new Map(),
 
-    try {
-      const response = await fetch(url);
-      return await response.text();
+  getTwitchAvatar(username) {
+    if (!username) return Promise.resolve(null);
 
-    } catch (err) {
-      console.error(`[getTwitchAvatar] Error fetching avatar for "${username}": ${err.message}`);
-    }
+    const key = String(username).toLowerCase();
+    if (Utils._twitchAvatars.has(key)) return Utils._twitchAvatars.get(key);
+
+    // Runs up to the fetch before the set below, so a failure can never delete
+    // the entry it is about to be stored under.
+    const request = (async () => {
+      try {
+        const response = await fetch(`https://decapi.me/twitch/avatar/${encodeURIComponent(username)}`);
+        if (!response.ok) throw new Error(`decapi responded ${response.status}`);
+
+        const body = (await response.text()).trim();
+        if (!/^https?:\/\//i.test(body)) throw new Error(body || "empty response");
+        return body;
+
+      } catch (err) {
+        console.error(`[getTwitchAvatar] Error fetching avatar for "${username}": ${err.message}`);
+        Utils._twitchAvatars.delete(key);
+        return null;
+      }
+    })();
+
+    Utils._twitchAvatars.set(key, request);
+    return request;
   },
 
   // Kick's channel endpoint is the only source of a user's avatar, and chat
   // handlers ask for one per message — cache so a busy chat doesn't refetch the
-  // same picture hundreds of times. Failures aren't cached, so they can retry.
+  // same picture hundreds of times. The in-flight promise is what's cached, so
+  // a burst that arrives before the first reply lands shares it rather than
+  // firing one request per message. Failures aren't cached, so they can retry.
   _kickAvatars: new Map(),
 
-  async getKickAvatar(username) {
+  getKickAvatar(username) {
     const genericAvatar = "https://files.kick.com/images/user/4545493/profile_image/conversion/default1-medium.webp";
-    if (!username) return genericAvatar;
+    if (!username) return Promise.resolve(genericAvatar);
     if (Utils._kickAvatars.has(username)) return Utils._kickAvatars.get(username);
 
-    try {
-      const response = await fetch(`https://kick.com/api/v2/channels/${username}`);
-      const data = await response.json();
-      let profilePicUrl = data.user?.profile_pic || genericAvatar;
+    const request = (async () => {
+      try {
+        const response = await fetch(`https://kick.com/api/v2/channels/${username}`);
+        if (!response.ok) throw new Error(`kick responded ${response.status}`);
 
-      if (profilePicUrl) {
+        const data = await response.json();
         // Replace 'fullsize' with 'medium'
-        profilePicUrl = profilePicUrl.replace("fullsize", "medium");
+        return (data.user?.profile_pic || genericAvatar).replace("fullsize", "medium");
+
+      } catch (err) {
+        console.error("Error fetching Kick profile picture:", err);
+        Utils._kickAvatars.delete(username);
+        return genericAvatar;
       }
+    })();
 
-      Utils._kickAvatars.set(username, profilePicUrl);
-      return profilePicUrl;
-
-    } catch (err) {
-      console.error("Error fetching Kick profile picture:", err);
-      return genericAvatar;
-    }
+    Utils._kickAvatars.set(username, request);
+    return request;
   },
 
   // credits to nutty. Use this to get the super sticker URL.
