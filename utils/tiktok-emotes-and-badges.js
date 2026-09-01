@@ -148,15 +148,31 @@ const tikTokBadgeData = {
         { min: 50, icon: "grade_badge_icon_lite_lv50_v1.png~tplv-obj.image", color: "rgba(42, 25, 238, .75)"  }
     ],
 
-    // badgeSceneType 10 — one shared color, the icon steps every ten levels
+    // badgeSceneType 10 — a fan-club member gets one of two looks depending on
+    // whether they're subscribed (data.isSubscriber): plain members use the
+    // "webcast-va-…-v2" icon set, subscribers ("super fans") get a different
+    // icon set plus an orange border. Both share one color across all tiers;
+    // the icon steps every ten levels.
     fan: [
-        { min: 1,  icon: "fans_badge_icon_lv1_v4.png~tplv-obj.image",  color: "rgba(255, 94, 58, .5)" },
-        { min: 10, icon: "fans_badge_icon_lv10_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
-        { min: 20, icon: "fans_badge_icon_lv20_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
-        { min: 30, icon: "fans_badge_icon_lv30_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
-        { min: 40, icon: "fans_badge_icon_lv40_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
-        { min: 50, icon: "fans_badge_icon_lv50_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" }
+        { min: 1,  icon: "webcast-va-fans_badge_icon_lv1_v2.png~tplv-obj.image",  color: "rgba(255, 94, 58, .5)" },
+        { min: 10, icon: "webcast-va-fans_badge_icon_lv10_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+        { min: 20, icon: "webcast-va-fans_badge_icon_lv20_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+        { min: 30, icon: "webcast-va-fans_badge_icon_lv30_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+        { min: 40, icon: "webcast-va-fans_badge_icon_lv40_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+        { min: 50, icon: "webcast-va-fans_badge_icon_lv50_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" }
     ],
+
+    fanSubscriber: {
+        border: "#e97942",
+        tiers: [
+            { min: 1,  icon: "fans_badge_icon_lv1_v4.png~tplv-obj.image",  color: "rgba(255, 94, 58, .5)" },
+            { min: 10, icon: "fans_badge_icon_lv10_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+            { min: 20, icon: "fans_badge_icon_lv20_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+            { min: 30, icon: "fans_badge_icon_lv30_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+            { min: 40, icon: "fans_badge_icon_lv40_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+            { min: 50, icon: "fans_badge_icon_lv50_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" }
+        ]
+    },
 
     // badgeSceneType 6 — the payload supplies this one's icon
     topGifter: { color: "rgba(254, 44, 85, .4)" },

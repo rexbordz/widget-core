@@ -301,7 +301,8 @@ const Utils = {
   //
   // Emitted in the order TikTok paints them — grade, fan club, top gifter,
   // mod — which is not the order they arrive in. Returns { icon, color, text,
-  // label } descriptors, where `text` sits beside the icon on the chip.
+  // border, label } descriptors, where `text` sits beside the icon on the chip
+  // and `border` (fan-club "super fans" only) rings it.
   getTikTokBadges(data, { fansClubName = '' } = {}) {
     if (!data) return [];
 
@@ -331,11 +332,15 @@ const Utils = {
 
     // The chip's text is the club's name, which the payload never carries — it
     // comes from the widget's own settings. Without it the icon stands alone.
+    // A subscribed member ("super fan") gets a different icon set and a
+    // border; a plain member gets neither.
     const fan = byScene.get(10);
-    const fanTier = fan && tierFor(tikTokBadgeData.fan, fan.level);
+    const fanTiers = data.isSubscriber ? tikTokBadgeData.fanSubscriber.tiers : tikTokBadgeData.fan;
+    const fanTier = fan && tierFor(fanTiers, fan.level);
     if (fanTier) {
       const entry = { icon: url(fanTier.icon), color: fanTier.color, label: `Fan level ${fan.level}` };
       if (fansClubName) entry.text = String(fansClubName);
+      if (data.isSubscriber) entry.border = tikTokBadgeData.fanSubscriber.border;
       badges.push(entry);
     }
 
