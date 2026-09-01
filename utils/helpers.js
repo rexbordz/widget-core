@@ -372,12 +372,34 @@ const Utils = {
   // sizes its own (13px text gives the 15px pill) and they come out right; rescale
   // that single font-size and the whole badge follows, which is what lets a widget
   // ship no badge CSS at all.
-  _tikTokBadgeStyle: {
-    font: '"TikTok Sans", system-ui, -apple-system, sans-serif',
-    height: '1.154em',                // 15px
-    radius: '0.308em',                // 4px
-    border: 'max(1px, 0.077em)'       // 1px, and never allowed to vanish sub-pixel
-  },
+  _tikTokBadgeStyle: (() => {
+    // Two dials, both owned by the host page, because text size and pill height are
+    // independent choices and one number cannot express both:
+    //
+    //   font-size               the badge's text. Pure inherit — nothing here sets it.
+    //   --tiktok-badge-height   the pill. Defaults to TikTok's own 1.154em (13px text
+    //                           in a 15px pill); set it to any length to override.
+    //
+    // Everything except the text is a fraction of the pill, so overriding the height
+    // rescales the icon, padding, radius and borders with it and the badge keeps its
+    // proportions. Set neither and you get TikTok's real badge off the inherited size.
+    const h = 'var(--tiktok-badge-height, 1.154em)';
+
+    return {
+      font: '"TikTok Sans", system-ui, -apple-system, sans-serif',
+      height: h,
+      radius: `calc(${h} * 0.267)`,
+      pad: `calc(${h} * 0.2)`,
+      // Never allowed to vanish sub-pixel. calc(-1 * …) because a function can't be
+      // negated by writing a minus in front of it.
+      border: `max(1px, calc(${h} * 0.067))`,
+      borderNeg: `calc(-1 * max(1px, calc(${h} * 0.067)))`,
+      // Shared by every badge so the super fan's icon comes out the same size as the
+      // flat chips' — only the pill around it differs. Width is always left to the
+      // art's own aspect ratio.
+      iconHeight: `calc(${h} * 0.72)`
+    };
+  })(),
 
   _tikTokIcon(icon) {
     return Utils._tikTokBadgeData.base + icon;
@@ -416,13 +438,16 @@ const Utils = {
     badge.style.cssText = [
       'display:inline-flex', 'align-items:center', 'justify-content:center',
       'box-sizing:border-box', `height:${style.height}`,
-      'padding:0 0.231em', 'gap:0.15em',
+      `padding:0 ${style.pad}`, 'gap:0.15em',
       `border-radius:${style.radius}`, `background:${background}`,
       `font-family:${style.font}`, 'font-weight:700', 'line-height:1',
       'color:#fff', 'white-space:nowrap', 'vertical-align:middle', 'user-select:none'
     ].join(';');
 
-    badge.appendChild(Utils._tikTokBadgeIcon(icon, 'height:0.831em;width:auto;display:block'));
+    badge.appendChild(Utils._tikTokBadgeIcon(
+      icon,
+      `height:${style.iconHeight};width:auto;object-fit:contain;display:block`
+    ));
 
     // No text means no gap and no span — the padding closes up around the icon.
     if (text) {
@@ -434,10 +459,13 @@ const Utils = {
     return badge;
   },
 
-  // The one badge TikTok draws differently: the icon breaks out above the pill and
-  // sits on a darker cap panel, and the pill and the panel each carry their own
-  // border. Everything is positioned in em off the pill, so it rescales with the
-  // inherited font-size exactly like the flat chips do.
+  // The one badge TikTok draws differently: the icon sits on a darker cap panel with
+  // a border of its own, inside a pill that carries a second border. The icon itself
+  // is the same size as every other badge's — only the pill around it differs.
+  //
+  // The cap is a normal flex child, not an absolutely positioned box, so it shrink-
+  // wraps whatever the icon's aspect ratio turns out to be; negative margins pull it
+  // back over the pill's own border so the two borders meet instead of stacking.
   getTikTokSuperFanBadge(data, { fansClubName = '' } = {}) {
     const style = Utils._tikTokBadgeStyle;
     const theme = Utils._tikTokBadgeData.fanSubscriber;
@@ -451,38 +479,39 @@ const Utils = {
     const badge = document.createElement('div');
     badge.title = `Fan level ${fan.level}`;
     badge.style.cssText = [
-      'position:relative', 'display:inline-flex', 'align-items:center',
-      'box-sizing:border-box', `height:${style.height}`,
-      // The left padding is the well the icon sits in. With no club name to show
-      // there is nothing to pad for, so it closes up to just past the icon.
-      text ? 'padding:0 0.231em 0 2.308em' : 'padding:0 0 0 2.05em',
+      'display:inline-flex', 'align-items:center', 'box-sizing:border-box',
+      `height:${style.height}`,
+      // No club name to show means no pill to show either — the cap below pulls
+      // flush to the right edge and the badge is just the capped icon.
+      `padding:0 ${text ? style.pad : '0'} 0 0`,
       `border:${style.border} solid ${theme.border}`,
       `border-radius:${style.radius}`, `background:${theme.background}`,
-      'overflow:visible', `font-family:${style.font}`, 'line-height:1',
+      `font-family:${style.font}`, 'line-height:1',
       'color:#fff', 'white-space:nowrap', 'vertical-align:middle', 'user-select:none'
     ].join(';');
 
     const panel = document.createElement('div');
     panel.style.cssText = [
-      'position:absolute', 'left:-0.077em', 'top:-0.077em',
-      'width:2.154em', `height:${style.height}`, 'box-sizing:border-box',
+      'flex:none', 'display:flex', 'align-items:center', 'justify-content:center',
+      'box-sizing:border-box', `height:${style.height}`, `padding:0 ${style.pad}`,
+      // Top/bottom/left sit the cap's border exactly on the pill's; the right is
+      // the gap to the text, or another overlap when there is no text.
+      `margin:${style.borderNeg} ${text ? style.pad : style.borderNeg} ${style.borderNeg} ${style.borderNeg}`,
       `border:${style.border} solid ${theme.border}`,
-      `border-radius:${style.radius}`, `background:${theme.panel}`, 'z-index:0'
+      `border-radius:${style.radius}`, `background:${theme.panel}`
     ].join(';');
 
-    const icon = Utils._tikTokBadgeIcon(Utils._tikTokIcon(tier.icon), [
-      'position:absolute', 'left:0.077em', 'top:-0.077em',
-      'width:1.846em', 'height:1.308em', 'object-fit:contain', 'z-index:1'
-    ].join(';'));
-
-    badge.append(panel, icon);
+    panel.appendChild(Utils._tikTokBadgeIcon(
+      Utils._tikTokIcon(tier.icon),
+      `height:${style.iconHeight};width:auto;object-fit:contain;display:block`
+    ));
+    badge.appendChild(panel);
 
     if (text) {
       const span = document.createElement('span');
       span.textContent = text;
       span.style.cssText = [
-        'position:relative', 'z-index:1', 'font-weight:700',
-        'letter-spacing:0.015em', 'white-space:nowrap',
+        'font-weight:700', 'letter-spacing:0.015em', 'white-space:nowrap',
         'transform:scaleX(0.94)', 'transform-origin:left center'
       ].join(';');
       badge.appendChild(span);
