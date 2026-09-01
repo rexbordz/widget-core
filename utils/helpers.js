@@ -380,9 +380,14 @@ const Utils = {
     //   --tiktok-badge-height   the pill. Defaults to TikTok's own 1.154em (13px text
     //                           in a 15px pill); set it to any length to override.
     //
-    // Everything except the text is a fraction of the pill, so overriding the height
-    // rescales the icon, padding, radius and borders with it and the badge keeps its
-    // proportions. Set neither and you get TikTok's real badge off the inherited size.
+    // Padding, radius and borders are fractions of the pill, so overriding the height
+    // rescales them with it and the badge keeps its proportions. Set neither and you
+    // get TikTok's real badge off the inherited size.
+    //
+    // The icon gets a third, optional dial because it is the one thing that may want
+    // to break the pill: past 1.0 of the height it grows out over the top and bottom
+    // edges, which is how TikTok draws the super fan. Left alone it sits inside the
+    // pill at 0.72, the ratio the chips have always used.
     const h = 'var(--tiktok-badge-height, 1.154em)';
 
     return {
@@ -397,7 +402,7 @@ const Utils = {
       // Shared by every badge so the super fan's icon comes out the same size as the
       // flat chips' — only the pill around it differs. Width is always left to the
       // art's own aspect ratio.
-      iconHeight: `calc(${h} * 0.72)`
+      iconHeight: `var(--tiktok-badge-icon, calc(${h} * 0.72))`
     };
   })(),
 
