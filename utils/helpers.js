@@ -373,22 +373,27 @@ const Utils = {
   // that single font-size and the whole badge follows, which is what lets a widget
   // ship no badge CSS at all.
   _tikTokBadgeStyle: (() => {
-    // Two dials, both owned by the host page, because text size and pill height are
-    // independent choices and one number cannot express both:
+    // A host sets ONE thing — the font-size these badges inherit — and that is the
+    // badge's scale. Every proportion is owned here and expressed against it, so a
+    // widget never restates the design just to use it:
     //
-    //   font-size               the badge's text. Pure inherit — nothing here sets it.
-    //   --tiktok-badge-height   the pill. Defaults to TikTok's own 1.154em (13px text
-    //                           in a 15px pill); set it to any length to override.
+    //   pill height   1.641em of the inherited size
+    //   icon          0.9 of the pill
+    //   padding       0.2 of the pill
+    //   radius        0.267 of the pill
+    //   border        0.067 of the pill, floored at 1px so it cannot vanish
     //
-    // Padding, radius and borders are fractions of the pill, so overriding the height
-    // rescales them with it and the badge keeps its proportions. Set neither and you
-    // get TikTok's real badge off the inherited size.
+    // Where 1.641 and 0.9 come from: the multistream chat overlay draws badge text at
+    // 0.65 of its --font and every platform's badge at --chip (1.067 of --font), so a
+    // pill is 1.067/0.65 = 1.641 times its own text, with the icon at 0.9 of that.
+    // The icon is the one part allowed past 1.0, where it grows out over the pill's
+    // top and bottom edges the way TikTok draws the super fan.
     //
-    // The icon gets a third, optional dial because it is the one thing that may want
-    // to break the pill: past 1.0 of the height it grows out over the top and bottom
-    // edges, which is how TikTok draws the super fan. Left alone it sits inside the
-    // pill at 0.72, the ratio the chips have always used.
-    const h = 'var(--tiktok-badge-height, 1.154em)';
+    // The custom properties below are escape hatches, not part of the contract — a
+    // widget that wants to deviate can, but none has to. --tiktok-badge-height:
+    // 1.154em gives TikTok's own proportions (13px text in a 15px pill), where the
+    // text reads much larger against the pill than it does here.
+    const h = 'var(--tiktok-badge-height, 1.6415em)';
 
     return {
       font: '"TikTok Sans", system-ui, -apple-system, sans-serif',
@@ -402,7 +407,7 @@ const Utils = {
       // Shared by every badge so the super fan's icon comes out the same size as the
       // flat chips' — only the pill around it differs. Width is always left to the
       // art's own aspect ratio.
-      iconHeight: `var(--tiktok-badge-icon, calc(${h} * 0.72))`
+      iconHeight: `var(--tiktok-badge-icon, calc(${h} * 0.9))`
     };
   })(),
 
@@ -446,7 +451,10 @@ const Utils = {
       `padding:0 ${style.pad}`, 'gap:0.15em',
       `border-radius:${style.radius}`, `background:${background}`,
       `font-family:${style.font}`, 'font-weight:700', 'line-height:1',
-      'color:#fff', 'white-space:nowrap', 'vertical-align:middle', 'user-select:none'
+      // text-shadow:none because a chat header commonly sets one for legibility over
+      // video, and it inherits straight into the badge's own text.
+      'color:#fff', 'text-shadow:none', 'white-space:nowrap',
+      'vertical-align:middle', 'user-select:none'
     ].join(';');
 
     badge.appendChild(Utils._tikTokBadgeIcon(
@@ -492,7 +500,10 @@ const Utils = {
       `border:${style.border} solid ${theme.border}`,
       `border-radius:${style.radius}`, `background:${theme.background}`,
       `font-family:${style.font}`, 'line-height:1',
-      'color:#fff', 'white-space:nowrap', 'vertical-align:middle', 'user-select:none'
+      // text-shadow:none because a chat header commonly sets one for legibility over
+      // video, and it inherits straight into the badge's own text.
+      'color:#fff', 'text-shadow:none', 'white-space:nowrap',
+      'vertical-align:middle', 'user-select:none'
     ].join(';');
 
     const panel = document.createElement('div');
