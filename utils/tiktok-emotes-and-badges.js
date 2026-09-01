@@ -163,7 +163,7 @@ const tikTokBadgeData = {
     ],
 
     fanSubscriber: {
-        border: "#ffb878",
+        border: "#e47a4c",
         tiers: [
             { min: 1,  icon: "fans_badge_icon_lv1_v4.png~tplv-obj.image",  color: "rgba(255, 94, 58, .5)" },
             { min: 10, icon: "fans_badge_icon_lv10_v4.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
