@@ -110,7 +110,7 @@ const Utils = {
   // TikTok's emote objects carry `emoteImageUrl`/`emoteId` and a single
   // `placeInComment` index rather than a startIndex/endIndex span, so each
   // emote replaces exactly one placeholder character in the comment. Requires
-  // tikTokChatEmotes (utils/tiktok-emotes-and-badges.js) to be loaded first.
+  // tikTokChatEmotes (utils/tiktok-emotes.js) to be loaded first.
   renderTikTokMessageWithEmotesHtml(originalMessage, emotes) {
     const text = String(originalMessage ?? '');
 
@@ -142,7 +142,7 @@ const Utils = {
   },
 
   // Plain text segments can also contain typed shortcodes like "[laughcry]",
-  // mapped in tikTokChatEmotes (utils/tiktok-emotes-and-badges.js) to either a PNG
+  // mapped in tikTokChatEmotes (utils/tiktok-emotes.js) to either a PNG
   // filename served from assets/images/tiktok/emotes/ or a plain unicode
   // emoji. Walk the segment and swap any recognised shortcode in place,
   // escaping everything else.
@@ -294,76 +294,275 @@ const Utils = {
       });
   },
 
+  /* ------------------------------------------------------------ TikTok badges --
+   * Self-contained: a widget that wants TikTok badges loads this file and the
+   * TikTok Sans font, and nothing else. getTikTokBadges hands back finished DOM
+   * elements, so there is no badge CSS to copy and no renderer support code.
+   * ---------------------------------------------------------------------------- */
+
   // credits to vortisRD (the scraped icon urls and chip colors)
-  // TikFinity gives every badge a `badgeSceneType` but an image url for only
-  // one of them, so the rest are rebuilt from tikTokBadgeData
-  // (utils/tiktok-emotes-and-badges.js), which must be loaded first.
+  // TikFinity's chat payload names a user's grade, fan-club and moderator badges
+  // but ships an image url for none of them — only the top-gifter badge carries
+  // its own `url`. These are the icons TikTok itself serves, so the missing three
+  // are synthesized from the level in the payload.
   //
-  // Emitted in the order TikTok paints them — grade, fan club, top gifter,
-  // mod — which is not the order they arrive in. Returns { icon, color, text,
-  // border, label } descriptors, where `text` sits beside the icon on the chip
-  // and `border` (fan-club "super fans" only) rings it.
+  // Icons are bare filenames off `base`; _tikTokIcon joins them. A tier applies
+  // from its `min` up to the next tier's, so a level past the last row clamps.
+  _tikTokBadgeData: {
+    base: "https://p16-webcast.tiktokcdn.com/webcast-va/",
+
+    // badgeSceneType 8 — colors deepen with the tier
+    grade: [
+      { min: 1,  icon: "grade_badge_icon_lite_lv1_v1.png~tplv-obj.image",  color: "rgba(120, 158, 231, .6)" },
+      { min: 5,  icon: "grade_badge_icon_lite_lv5_v1.png~tplv-obj.image",  color: "rgba(95, 144, 239, .6)"  },
+      { min: 10, icon: "grade_badge_icon_lite_lv10_v1.png~tplv-obj.image", color: "rgba(63, 125, 246, .6)"  },
+      { min: 15, icon: "grade_badge_icon_lite_lv15_v2.png~tplv-obj.image", color: "rgba(71, 126, 255, .7)"  },
+      { min: 20, icon: "grade_badge_icon_lite_lv20_v1.png~tplv-obj.image", color: "rgba(71, 90, 255, .7)"   },
+      { min: 25, icon: "grade_badge_icon_lite_lv25_v1.png~tplv-obj.image", color: "rgba(39, 47, 243, .7)"   },
+      { min: 30, icon: "grade_badge_icon_lite_lv30_v1.png~tplv-obj.image", color: "rgba(42, 25, 238, .75)"  },
+      // vortisRD's css only defines colors through grade 30, so the tiers above
+      // step up through the real icons but hold grade 30's color rather than
+      // invent one.
+      { min: 35, icon: "grade_badge_icon_lite_lv35_v3.png~tplv-obj.image", color: "rgba(42, 25, 238, .75)"  },
+      { min: 40, icon: "grade_badge_icon_lite_lv40_v2.png~tplv-obj.image", color: "rgba(42, 25, 238, .75)"  },
+      { min: 45, icon: "grade_badge_icon_lite_lv45_v1.png~tplv-obj.image", color: "rgba(42, 25, 238, .75)"  },
+      { min: 50, icon: "grade_badge_icon_lite_lv50_v1.png~tplv-obj.image", color: "rgba(42, 25, 238, .75)"  }
+    ],
+
+    // badgeSceneType 10, plain member — the "webcast-va-…-v2" icon set on a flat
+    // pill. One color across all tiers; the icon steps every ten levels.
+    fan: [
+      { min: 1,  icon: "webcast-va-fans_badge_icon_lv1_v2.png~tplv-obj.image",  color: "rgba(255, 94, 58, .5)" },
+      { min: 10, icon: "webcast-va-fans_badge_icon_lv10_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+      { min: 20, icon: "webcast-va-fans_badge_icon_lv20_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+      { min: 30, icon: "webcast-va-fans_badge_icon_lv30_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+      { min: 40, icon: "webcast-va-fans_badge_icon_lv40_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" },
+      { min: 50, icon: "webcast-va-fans_badge_icon_lv50_v2.png~tplv-obj.image", color: "rgba(255, 94, 58, .5)" }
+    ],
+
+    // badgeSceneType 10, subscribed member — the "super fan", the one badge TikTok
+    // draws two-tone: a lighter pill behind the text and a darker cap behind the
+    // icon, each carrying its own border. See getTikTokSuperFanBadge.
+    fanSubscriber: {
+      background: "rgba(188, 39, 0, .85)",
+      panel: "rgba(122, 10, 0, .85)",
+      border: "rgba(214, 122, 64, .95)",
+      tiers: [
+        { min: 1,  icon: "fans_badge_icon_lv1_v4.png~tplv-obj.image"  },
+        { min: 10, icon: "fans_badge_icon_lv10_v4.png~tplv-obj.image" },
+        { min: 20, icon: "fans_badge_icon_lv20_v4.png~tplv-obj.image" },
+        { min: 30, icon: "fans_badge_icon_lv30_v4.png~tplv-obj.image" },
+        { min: 40, icon: "fans_badge_icon_lv40_v4.png~tplv-obj.image" },
+        { min: 50, icon: "fans_badge_icon_lv50_v4.png~tplv-obj.image" }
+      ]
+    },
+
+    // badgeSceneType 6 — the payload supplies this one's icon
+    topGifter: { color: "rgba(254, 44, 85, .4)" },
+
+    // badgeSceneType 1. TikTok's #803F3F3F is Android AARRGGBB: alpha 0x80/255.
+    mod: {
+      icon: "moderater_badge_icon.png~tplv-obj.image",
+      color: "rgba(63, 63, 63, .5)"
+    }
+  },
+
+  // Every metric below is an em multiple of whatever font-size the badge inherits —
+  // nothing here sets one. Drop the elements into a container sized the way TikTok
+  // sizes its own (13px text gives the 15px pill) and they come out right; rescale
+  // that single font-size and the whole badge follows, which is what lets a widget
+  // ship no badge CSS at all.
+  _tikTokBadgeStyle: {
+    font: '"TikTok Sans", system-ui, -apple-system, sans-serif',
+    height: '1.154em',                // 15px
+    radius: '0.308em',                // 4px
+    border: 'max(1px, 0.077em)'       // 1px, and never allowed to vanish sub-pixel
+  },
+
+  _tikTokIcon(icon) {
+    return Utils._tikTokBadgeData.base + icon;
+  },
+
+  // Tiers are listed low to high, so the last one the level clears wins. A level
+  // below the first tier means the badge isn't really earned yet.
+  _tikTokTier(tiers, level) {
+    return typeof level === 'number' ? tiers.filter((t) => level >= t.min).pop() : null;
+  },
+
+  _tikTokScene(data, sceneType) {
+    return (data?.userBadges || []).find((b) => b && b.badgeSceneType === sceneType) || null;
+  },
+
+  // These elements are handed out fully built, so there is no widget-side image
+  // guard to fall back on: a dropped CDN request has to leave the pill and its text
+  // rather than a broken-image glyph.
+  _tikTokBadgeIcon(src, css) {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.style.cssText = css;
+    img.onerror = () => img.remove();
+    img.src = src;
+    return img;
+  },
+
+  // Grade, plain fan club, top gifter and moderator: a flat one-toned pill with the
+  // icon contained inside it, beside the text. Deliberately not the super fan's
+  // shape — TikTok gives only that one the two-tone cap and the borders.
+  _buildTikTokChip({ icon, text, label, background }) {
+    const style = Utils._tikTokBadgeStyle;
+
+    const badge = document.createElement('div');
+    if (label) badge.title = label;
+    badge.style.cssText = [
+      'display:inline-flex', 'align-items:center', 'justify-content:center',
+      'box-sizing:border-box', `height:${style.height}`,
+      'padding:0 0.231em', 'gap:0.15em',
+      `border-radius:${style.radius}`, `background:${background}`,
+      `font-family:${style.font}`, 'font-weight:700', 'line-height:1',
+      'color:#fff', 'white-space:nowrap', 'vertical-align:middle', 'user-select:none'
+    ].join(';');
+
+    badge.appendChild(Utils._tikTokBadgeIcon(icon, 'height:0.831em;width:auto;display:block'));
+
+    // No text means no gap and no span — the padding closes up around the icon.
+    if (text) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      badge.appendChild(span);
+    }
+
+    return badge;
+  },
+
+  // The one badge TikTok draws differently: the icon breaks out above the pill and
+  // sits on a darker cap panel, and the pill and the panel each carry their own
+  // border. Everything is positioned in em off the pill, so it rescales with the
+  // inherited font-size exactly like the flat chips do.
+  getTikTokSuperFanBadge(data, { fansClubName = '' } = {}) {
+    const style = Utils._tikTokBadgeStyle;
+    const theme = Utils._tikTokBadgeData.fanSubscriber;
+
+    const fan = Utils._tikTokScene(data, 10);
+    const tier = fan && Utils._tikTokTier(theme.tiers, fan.level);
+    if (!tier) return null;
+
+    const text = String(fansClubName || '');
+
+    const badge = document.createElement('div');
+    badge.title = `Fan level ${fan.level}`;
+    badge.style.cssText = [
+      'position:relative', 'display:inline-flex', 'align-items:center',
+      'box-sizing:border-box', `height:${style.height}`,
+      // The left padding is the well the icon sits in. With no club name to show
+      // there is nothing to pad for, so it closes up to just past the icon.
+      text ? 'padding:0 0.231em 0 2.308em' : 'padding:0 0 0 2.05em',
+      `border:${style.border} solid ${theme.border}`,
+      `border-radius:${style.radius}`, `background:${theme.background}`,
+      'overflow:visible', `font-family:${style.font}`, 'line-height:1',
+      'color:#fff', 'white-space:nowrap', 'vertical-align:middle', 'user-select:none'
+    ].join(';');
+
+    const panel = document.createElement('div');
+    panel.style.cssText = [
+      'position:absolute', 'left:-0.077em', 'top:-0.077em',
+      'width:2.154em', `height:${style.height}`, 'box-sizing:border-box',
+      `border:${style.border} solid ${theme.border}`,
+      `border-radius:${style.radius}`, `background:${theme.panel}`, 'z-index:0'
+    ].join(';');
+
+    const icon = Utils._tikTokBadgeIcon(Utils._tikTokIcon(tier.icon), [
+      'position:absolute', 'left:0.077em', 'top:-0.077em',
+      'width:1.846em', 'height:1.308em', 'object-fit:contain', 'z-index:1'
+    ].join(';'));
+
+    badge.append(panel, icon);
+
+    if (text) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      span.style.cssText = [
+        'position:relative', 'z-index:1', 'font-weight:700',
+        'letter-spacing:0.015em', 'white-space:nowrap',
+        'transform:scaleX(0.94)', 'transform-origin:left center'
+      ].join(';');
+      badge.appendChild(span);
+    }
+
+    return badge;
+  },
+
+  getTikTokGradeBadge(data) {
+    const grade = Utils._tikTokScene(data, 8);
+    const tier = grade && Utils._tikTokTier(Utils._tikTokBadgeData.grade, grade.level);
+    if (!tier) return null;
+
+    return Utils._buildTikTokChip({
+      icon: Utils._tikTokIcon(tier.icon),
+      text: String(grade.level),
+      label: `Level ${grade.level}`,
+      background: tier.color
+    });
+  },
+
+  // The chip's text is the club's name, which the payload never carries — it comes
+  // from the widget's own settings. Without it the icon stands alone. A subscribed
+  // member is a "super fan" and gets its own shape entirely.
+  getTikTokFanBadge(data, { fansClubName = '' } = {}) {
+    if (data?.isSubscriber) return Utils.getTikTokSuperFanBadge(data, { fansClubName });
+
+    const fan = Utils._tikTokScene(data, 10);
+    const tier = fan && Utils._tikTokTier(Utils._tikTokBadgeData.fan, fan.level);
+    if (!tier) return null;
+
+    return Utils._buildTikTokChip({
+      icon: Utils._tikTokIcon(tier.icon),
+      text: fansClubName ? String(fansClubName) : '',
+      label: `Fan level ${fan.level}`,
+      background: tier.color
+    });
+  },
+
+  // The only badge whose art the payload ships. Its rank lives on the message
+  // rather than on the badge.
+  getTikTokTopGifterBadge(data) {
+    const gifter = Utils._tikTokScene(data, 6);
+    if (!gifter || !gifter.url) return null;
+
+    return Utils._buildTikTokChip({
+      icon: gifter.url,
+      text: data.topGifterRank > 0 ? `No. ${data.topGifterRank}` : '',
+      label: 'Top gifter',
+      background: Utils._tikTokBadgeData.topGifter.color
+    });
+  },
+
+  // Announced twice — as a scene-1 badge and as a top-level flag — and not always
+  // both, so take either.
+  getTikTokModBadge(data) {
+    if (!data || (!data.isModerator && !Utils._tikTokScene(data, 1))) return null;
+
+    return Utils._buildTikTokChip({
+      icon: Utils._tikTokIcon(Utils._tikTokBadgeData.mod.icon),
+      label: 'Moderator',
+      background: Utils._tikTokBadgeData.mod.color
+    });
+  },
+
+  // Returns finished DOM elements rather than descriptors, in the order TikTok
+  // paints them — grade, fan club, top gifter, mod — which is not the order they
+  // arrive in. Append them and you're done.
+  //
+  // Build a fresh set per message: these are live nodes, so reusing one array across
+  // messages moves the badges to the newest one instead of copying them.
   getTikTokBadges(data, { fansClubName = '' } = {}) {
     if (!data) return [];
 
-    const badges = [];
-    const byScene = new Map();
-    (data.userBadges || []).forEach((badge) => {
-      if (badge && badge.badgeSceneType != null) byScene.set(badge.badgeSceneType, badge);
-    });
-
-    // Tiers are listed low to high, so the last one the level clears wins. A
-    // level below the first tier means the badge isn't really earned yet.
-    const tierFor = (tiers, level) =>
-      typeof level === 'number' ? tiers.filter((t) => level >= t.min).pop() : null;
-
-    const url = (icon) => tikTokBadgeData.base + icon;
-
-    const grade = byScene.get(8);
-    const gradeTier = grade && tierFor(tikTokBadgeData.grade, grade.level);
-    if (gradeTier) {
-      badges.push({
-        icon: url(gradeTier.icon),
-        color: gradeTier.color,
-        text: String(grade.level),
-        label: `Level ${grade.level}`
-      });
-    }
-
-    // The chip's text is the club's name, which the payload never carries — it
-    // comes from the widget's own settings. Without it the icon stands alone.
-    // A subscribed member ("super fan") gets a different icon set and a
-    // border; a plain member gets neither.
-    const fan = byScene.get(10);
-    const fanTiers = data.isSubscriber ? tikTokBadgeData.fanSubscriber.tiers : tikTokBadgeData.fan;
-    const fanTier = fan && tierFor(fanTiers, fan.level);
-    if (fanTier) {
-      const entry = { icon: url(fanTier.icon), color: fanTier.color, label: `Fan level ${fan.level}` };
-      if (fansClubName) entry.text = String(fansClubName);
-      if (data.isSubscriber) entry.border = tikTokBadgeData.fanSubscriber.border;
-      badges.push(entry);
-    }
-
-    // The only badge whose art the payload ships. Its rank lives on the message
-    // rather than on the badge.
-    const gifter = byScene.get(6);
-    if (gifter && gifter.url) {
-      const entry = { icon: gifter.url, color: tikTokBadgeData.topGifter.color, label: 'Top gifter' };
-      if (data.topGifterRank > 0) entry.text = `No. ${data.topGifterRank}`;
-      badges.push(entry);
-    }
-
-    // Announced twice — as a scene-1 badge and as a top-level flag — and not
-    // always both, so take either.
-    if (data.isModerator || byScene.has(1)) {
-      badges.push({
-        icon: url(tikTokBadgeData.mod.icon),
-        color: tikTokBadgeData.mod.color,
-        label: 'Moderator'
-      });
-    }
-
-    return badges;
+    return [
+      Utils.getTikTokGradeBadge(data),
+      Utils.getTikTokFanBadge(data, { fansClubName }),
+      Utils.getTikTokTopGifterBadge(data),
+      Utils.getTikTokModBadge(data)
+    ].filter(Boolean);
   },
 
   // Kick sends raw message text with its own emotes inlined as `[emote:id:name]`
@@ -390,6 +589,7 @@ const Utils = {
 
     return html + Utils.getKickTextHtml(text.slice(cursor), emoteMap);
   },
+
 
   // Escapes a run of plain message text, swapping in any word that names a 7TV
   // emote. Splitting on a capturing group keeps the separators, so runs of
